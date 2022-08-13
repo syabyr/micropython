@@ -92,15 +92,19 @@ void mp_task(void *pvParameter) {
     usb_init();
     #elif CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
     usb_serial_jtag_init();
-    #else
-    uart_init();
+    #endif
+    #if MICROPY_HW_ENABLE_UART_REPL
+    uart_stdout_init();
     #endif
     machine_init();
 
     size_t mp_task_heap_size;
     void *mp_task_heap = NULL;
 
-    #if CONFIG_ESP32_SPIRAM_SUPPORT
+    #if CONFIG_SPIRAM_USE_MALLOC
+    // SPIRAM is issued using MALLOC, fallback to normal allocation rules
+    mp_task_heap = NULL;
+    #elif CONFIG_ESP32_SPIRAM_SUPPORT
     // Try to use the entire external SPIRAM directly for the heap
     mp_task_heap = (void *)SOC_EXTRAM_DATA_LOW;
     switch (esp_spiram_get_chip_size()) {
@@ -148,6 +152,8 @@ soft_reset:
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_lib));
     readline_init0();
 
+    MP_STATE_PORT(native_code_pointers) = MP_OBJ_NULL;
+
     // initialise peripherals
     machine_pins_init();
     #if MICROPY_PY_MACHINE_I2S
@@ -189,6 +195,16 @@ soft_reset_exit:
     #if MICROPY_PY_THREAD
     mp_thread_deinit();
     #endif
+
+    // Free any native code pointers that point to iRAM.
+    if (MP_STATE_PORT(native_code_pointers) != MP_OBJ_NULL) {
+        size_t len;
+        mp_obj_t *items;
+        mp_obj_list_get(MP_STATE_PORT(native_code_pointers), &len, &items);
+        for (size_t i = 0; i < len; ++i) {
+            heap_caps_free(MP_OBJ_TO_PTR(items[i]));
+        }
+    }
 
     gc_sweep_all();
 
@@ -239,9 +255,15 @@ void *esp_native_code_commit(void *buf, size_t len, void *reloc) {
     if (p == NULL) {
         m_malloc_fail(len);
     }
+    if (MP_STATE_PORT(native_code_pointers) == MP_OBJ_NULL) {
+        MP_STATE_PORT(native_code_pointers) = mp_obj_new_list(0, NULL);
+    }
+    mp_obj_list_append(MP_STATE_PORT(native_code_pointers), MP_OBJ_TO_PTR(p));
     if (reloc) {
         mp_native_relocate(reloc, buf, (uintptr_t)p);
     }
     memcpy(p, buf, len);
     return p;
 }
+
+MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);

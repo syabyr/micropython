@@ -37,6 +37,13 @@
 #include "py/stackctrl.h"
 #include "py/stream.h" // for mp_obj_print
 
+// Allocates an object and also sets type, for mp_obj_malloc{,_var} macros.
+void *mp_obj_malloc_helper(size_t num_bytes, const mp_obj_type_t *type) {
+    mp_obj_base_t *base = (mp_obj_base_t *)m_malloc(num_bytes);
+    base->type = type;
+    return base;
+}
+
 const mp_obj_type_t *MICROPY_WRAP_MP_OBJ_GET_TYPE(mp_obj_get_type)(mp_const_obj_t o_in) {
     #if MICROPY_OBJ_IMMEDIATE_OBJS && MICROPY_OBJ_REPR == MICROPY_OBJ_REPR_A
 
@@ -297,7 +304,7 @@ mp_int_t mp_obj_get_int(mp_const_obj_t arg) {
         return 1;
     } else if (mp_obj_is_small_int(arg)) {
         return MP_OBJ_SMALL_INT_VALUE(arg);
-    } else if (mp_obj_is_type(arg, &mp_type_int)) {
+    } else if (mp_obj_is_exact_type(arg, &mp_type_int)) {
         return mp_obj_int_get_checked(arg);
     } else {
         mp_obj_t res = mp_unary_op(MP_UNARY_OP_INT, (mp_obj_t)arg);
@@ -323,7 +330,7 @@ bool mp_obj_get_int_maybe(mp_const_obj_t arg, mp_int_t *value) {
         *value = 1;
     } else if (mp_obj_is_small_int(arg)) {
         *value = MP_OBJ_SMALL_INT_VALUE(arg);
-    } else if (mp_obj_is_type(arg, &mp_type_int)) {
+    } else if (mp_obj_is_exact_type(arg, &mp_type_int)) {
         *value = mp_obj_int_get_checked(arg);
     } else {
         return false;
@@ -342,15 +349,19 @@ bool mp_obj_get_float_maybe(mp_obj_t arg, mp_float_t *value) {
     } else if (mp_obj_is_small_int(arg)) {
         val = (mp_float_t)MP_OBJ_SMALL_INT_VALUE(arg);
     #if MICROPY_LONGINT_IMPL != MICROPY_LONGINT_IMPL_NONE
-    } else if (mp_obj_is_type(arg, &mp_type_int)) {
+    } else if (mp_obj_is_exact_type(arg, &mp_type_int)) {
         val = mp_obj_int_as_float_impl(arg);
     #endif
     } else if (mp_obj_is_float(arg)) {
         val = mp_obj_float_get(arg);
     } else {
-        return false;
+        arg = mp_unary_op(MP_UNARY_OP_FLOAT_MAYBE, (mp_obj_t)arg);
+        if (arg != MP_OBJ_NULL && mp_obj_is_float(arg)) {
+            val = mp_obj_float_get(arg);
+        } else {
+            return false;
+        }
     }
-
     *value = val;
     return true;
 }
@@ -372,27 +383,17 @@ mp_float_t mp_obj_get_float(mp_obj_t arg) {
 
 #if MICROPY_PY_BUILTINS_COMPLEX
 bool mp_obj_get_complex_maybe(mp_obj_t arg, mp_float_t *real, mp_float_t *imag) {
-    if (arg == mp_const_false) {
-        *real = 0;
-        *imag = 0;
-    } else if (arg == mp_const_true) {
-        *real = 1;
-        *imag = 0;
-    } else if (mp_obj_is_small_int(arg)) {
-        *real = (mp_float_t)MP_OBJ_SMALL_INT_VALUE(arg);
-        *imag = 0;
-    #if MICROPY_LONGINT_IMPL != MICROPY_LONGINT_IMPL_NONE
-    } else if (mp_obj_is_type(arg, &mp_type_int)) {
-        *real = mp_obj_int_as_float_impl(arg);
-        *imag = 0;
-    #endif
-    } else if (mp_obj_is_float(arg)) {
-        *real = mp_obj_float_get(arg);
+    if (mp_obj_get_float_maybe(arg, real)) {
         *imag = 0;
     } else if (mp_obj_is_type(arg, &mp_type_complex)) {
         mp_obj_complex_get(arg, real, imag);
     } else {
-        return false;
+        arg = mp_unary_op(MP_UNARY_OP_COMPLEX_MAYBE, (mp_obj_t)arg);
+        if (arg != MP_OBJ_NULL && mp_obj_is_type(arg, &mp_type_complex)) {
+            mp_obj_complex_get(arg, real, imag);
+        } else {
+            return false;
+        }
     }
     return true;
 }
