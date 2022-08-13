@@ -19,6 +19,7 @@ INC += -I$(TOP)
 # compiler settings
 CWARN = -Wall -Werror
 CWARN += -Wextra -Wno-unused-parameter -Wpointer-arith
+CWARN += -Wno-array-bounds -Wno-error=unused-but-set-variable
 CFLAGS = $(INC) $(CWARN) -std=gnu99 $(CFLAGS_MOD) $(COPT) $(CFLAGS_EXTRA)
 CFLAGS += -fdata-sections -ffunction-sections -fno-asynchronous-unwind-tables
 
