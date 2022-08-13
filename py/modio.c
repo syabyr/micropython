@@ -37,9 +37,6 @@
 
 #if MICROPY_PY_IO
 
-extern const mp_obj_type_t mp_type_fileio;
-extern const mp_obj_type_t mp_type_textio;
-
 #if MICROPY_PY_IO_IOBASE
 
 STATIC const mp_obj_type_t mp_type_iobase;
@@ -121,8 +118,7 @@ typedef struct _mp_obj_bufwriter_t {
 STATIC mp_obj_t bufwriter_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 2, 2, false);
     size_t alloc = mp_obj_get_int(args[1]);
-    mp_obj_bufwriter_t *o = m_new_obj_var(mp_obj_bufwriter_t, byte, alloc);
-    o->base.type = type;
+    mp_obj_bufwriter_t *o = mp_obj_malloc_var(mp_obj_bufwriter_t, byte, alloc, type);
     o->stream = args[0];
     o->alloc = alloc;
     o->len = 0;
@@ -212,12 +208,6 @@ STATIC const mp_rom_map_elem_t mp_module_io_globals_table[] = {
     #if MICROPY_PY_IO_IOBASE
     { MP_ROM_QSTR(MP_QSTR_IOBase), MP_ROM_PTR(&mp_type_iobase) },
     #endif
-    #if MICROPY_PY_IO_FILEIO
-    { MP_ROM_QSTR(MP_QSTR_FileIO), MP_ROM_PTR(&mp_type_fileio) },
-    #if MICROPY_CPYTHON_COMPAT
-    { MP_ROM_QSTR(MP_QSTR_TextIOWrapper), MP_ROM_PTR(&mp_type_textio) },
-    #endif
-    #endif
     { MP_ROM_QSTR(MP_QSTR_StringIO), MP_ROM_PTR(&mp_type_stringio) },
     #if MICROPY_PY_IO_BYTESIO
     { MP_ROM_QSTR(MP_QSTR_BytesIO), MP_ROM_PTR(&mp_type_bytesio) },
@@ -233,5 +223,7 @@ const mp_obj_module_t mp_module_io = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t *)&mp_module_io_globals,
 };
+
+MP_REGISTER_MODULE(MP_QSTR_uio, mp_module_io);
 
 #endif

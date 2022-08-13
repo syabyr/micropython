@@ -28,8 +28,9 @@ UNAME_S := $(shell uname -s)
 
 # include py core make definitions
 include $(TOP)/py/py.mk
+include $(TOP)/extmod/extmod.mk
 
-GIT_SUBMODULES += lib/axtls lib/berkeley-db-1.xx lib/libffi
+GIT_SUBMODULES += lib/berkeley-db-1.xx
 
 INC +=  -I.
 INC +=  -I$(TOP)
@@ -132,6 +133,16 @@ CFLAGS_MOD += -DMICROPY_PY_THREAD=1 -DMICROPY_PY_THREAD_GIL=0
 LDFLAGS_MOD += $(LIBPTHREAD)
 endif
 
+ifeq ($(MICROPY_PY_USSL),1)
+ifeq ($(MICROPY_SSL_AXTLS),1)
+GIT_SUBMODULES += lib/axtls
+endif
+ifeq ($(MICROPY_SSL_MBEDTLS),1)
+GIT_SUBMODULES += lib/mbedtls
+CFLAGS_MOD += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
+endif
+endif
+
 # If the variant enables it, enable modbluetooth.
 ifeq ($(MICROPY_PY_BLUETOOTH),1)
 
@@ -191,6 +202,9 @@ endif
 ifeq ($(MICROPY_PY_FFI),1)
 
 ifeq ($(MICROPY_STANDALONE),1)
+# Build libffi from source.
+GIT_SUBMODULES += lib/libffi
+DEPLIBS += libffi
 LIBFFI_CFLAGS_MOD := -I$(shell ls -1d $(BUILD)/lib/libffi/out/lib/libffi-*/include)
  ifeq ($(MICROPY_FORCE_32BIT),1)
   LIBFFI_LDFLAGS_MOD = $(BUILD)/lib/libffi/out/lib32/libffi.a
@@ -198,6 +212,7 @@ LIBFFI_CFLAGS_MOD := -I$(shell ls -1d $(BUILD)/lib/libffi/out/lib/libffi-*/inclu
   LIBFFI_LDFLAGS_MOD = $(BUILD)/lib/libffi/out/lib/libffi.a
  endif
 else
+# Use system version of libffi.
 LIBFFI_CFLAGS_MOD := $(shell pkg-config --cflags libffi)
 LIBFFI_LDFLAGS_MOD := $(shell pkg-config --libs libffi)
 endif
@@ -225,8 +240,6 @@ SRC_C += \
 	mpthreadport.c \
 	input.c \
 	modmachine.c \
-	modos.c \
-	moduos_vfs.c \
 	modtime.c \
 	moduselect.c \
 	alloc.c \
@@ -270,12 +283,6 @@ CFLAGS += -DMPZ_DIG_SIZE=16 # force 16 bits to work on both 32 and 64 bit archs
 CFLAGS += -DMICROPY_MODULE_FROZEN_STR
 endif
 
-HASCPP17 = $(shell expr `$(CC) -dumpversion | cut -f1 -d.` \>= 7)
-ifeq ($(HASCPP17), 1)
-	CXXFLAGS += -std=c++17
-else
-	CXXFLAGS += -std=c++11
-endif
 CXXFLAGS += $(filter-out -Wmissing-prototypes -Wold-style-definition -std=gnu99,$(CFLAGS) $(CXXFLAGS_MOD))
 
 ifeq ($(MICROPY_FORCE_32BIT),1)
@@ -297,18 +304,18 @@ include $(TOP)/py/mkrules.mk
 
 .PHONY: test test_full
 
-test: $(PROG) $(TOP)/tests/run-tests.py
+test: $(BUILD)/$(PROG) $(TOP)/tests/run-tests.py
 	$(eval DIRNAME=ports/$(notdir $(CURDIR)))
-	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(PROG) ./run-tests.py
+	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py
 
-test_full: $(PROG) $(TOP)/tests/run-tests.py
+test_full: $(BUILD)/$(PROG) $(TOP)/tests/run-tests.py
 	$(eval DIRNAME=ports/$(notdir $(CURDIR)))
-	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(PROG) ./run-tests.py
-	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(PROG) ./run-tests.py -d thread
-	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(PROG) ./run-tests.py --emit native
-	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(PROG) ./run-tests.py --via-mpy $(RUN_TESTS_MPY_CROSS_FLAGS) -d basics float micropython
-	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(PROG) ./run-tests.py --via-mpy $(RUN_TESTS_MPY_CROSS_FLAGS) --emit native -d basics float micropython
-	cat $(TOP)/tests/basics/0prelim.py | ./$(PROG) | grep -q 'abc'
+	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py
+	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py -d thread
+	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py --emit native
+	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py --via-mpy $(RUN_TESTS_MPY_CROSS_FLAGS) -d basics float micropython
+	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py --via-mpy $(RUN_TESTS_MPY_CROSS_FLAGS) --emit native -d basics float micropython
+	cat $(TOP)/tests/basics/0prelim.py | ./$(BUILD)/$(PROG) | grep -q 'abc'
 
 test_gcov: test_full
 	gcov -o $(BUILD)/py $(TOP)/py/*.c
@@ -322,7 +329,7 @@ else
 CROSS_COMPILE_HOST =
 endif
 
-deplibs: libffi axtls
+deplibs: $(DEPLIBS)
 
 libffi: $(BUILD)/lib/libffi/include/ffi.h
 
@@ -336,18 +343,12 @@ $(BUILD)/lib/libffi/include/ffi.h: $(TOP)/lib/libffi/configure
 	$(abspath $(TOP))/lib/libffi/configure $(CROSS_COMPILE_HOST) --prefix=$$PWD/out --disable-structs CC="$(CC)" CXX="$(CXX)" LD="$(LD)" CFLAGS="-Os -fomit-frame-pointer -fstrict-aliasing -ffast-math -fno-exceptions"; \
 	$(MAKE) install-exec-recursive; $(MAKE) -C include install-data-am
 
-axtls: $(TOP)/lib/axtls/README
-
-$(TOP)/lib/axtls/README:
-	@echo "You cloned without --recursive, fetching submodules for you."
-	(cd $(TOP); git submodule update --init --recursive)
-
 PREFIX = /usr/local
 BINDIR = $(DESTDIR)$(PREFIX)/bin
 
-install: $(PROG)
+install: $(BUILD)/$(PROG)
 	install -d $(BINDIR)
-	install $(PROG) $(BINDIR)/$(PROG)
+	install $(BUILD)/$(PROG) $(BINDIR)/$(PROG)
 
 uninstall:
 	-rm $(BINDIR)/$(PROG)

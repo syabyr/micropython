@@ -83,13 +83,14 @@ STATIC mp_obj_t complex_make_new(const mp_obj_type_t *type_in, size_t n_args, si
                 // a string, parse it
                 size_t l;
                 const char *s = mp_obj_str_get_data(args[0], &l);
-                return mp_parse_num_decimal(s, l, true, true, NULL);
+                return mp_parse_num_complex(s, l, NULL);
             } else if (mp_obj_is_type(args[0], &mp_type_complex)) {
                 // a complex, just return it
                 return args[0];
             } else {
-                // something else, try to cast it to a complex
-                return mp_obj_new_complex(mp_obj_get_float(args[0]), 0);
+                mp_float_t real, imag;
+                mp_obj_get_complex(args[0], &real, &imag);
+                return mp_obj_new_complex(real, imag);
             }
 
         case 2:
@@ -162,8 +163,7 @@ const mp_obj_type_t mp_type_complex = {
 };
 
 mp_obj_t mp_obj_new_complex(mp_float_t real, mp_float_t imag) {
-    mp_obj_complex_t *o = m_new_obj(mp_obj_complex_t);
-    o->base.type = &mp_type_complex;
+    mp_obj_complex_t *o = mp_obj_malloc(mp_obj_complex_t, &mp_type_complex);
     o->real = real;
     o->imag = imag;
     return MP_OBJ_FROM_PTR(o);

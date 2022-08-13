@@ -35,6 +35,8 @@
 #include "py/mperrno.h"
 #include "py/mphal.h"
 
+#if MICROPY_PY_LWIP
+
 #include "shared/netutils/netutils.h"
 
 #include "lwip/init.h"
@@ -64,6 +66,7 @@
 // All socket options should be globally distinct,
 // because we ignore option levels for efficiency.
 #define IP_ADD_MEMBERSHIP 0x400
+#define IP_DROP_MEMBERSHIP 0x401
 
 // For compatibilily with older lwIP versions.
 #ifndef ip_set_option
@@ -911,9 +914,14 @@ STATIC mp_obj_t lwip_socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lwip_socket_bind_obj, lwip_socket_bind);
 
-STATIC mp_obj_t lwip_socket_listen(mp_obj_t self_in, mp_obj_t backlog_in) {
-    lwip_socket_obj_t *socket = MP_OBJ_TO_PTR(self_in);
-    mp_int_t backlog = mp_obj_get_int(backlog_in);
+STATIC mp_obj_t lwip_socket_listen(size_t n_args, const mp_obj_t *args) {
+    lwip_socket_obj_t *socket = MP_OBJ_TO_PTR(args[0]);
+
+    mp_int_t backlog = MICROPY_PY_USOCKET_LISTEN_BACKLOG_DEFAULT;
+    if (n_args > 1) {
+        backlog = mp_obj_get_int(args[1]);
+        backlog = (backlog < 0) ? 0 : backlog;
+    }
 
     if (socket->pcb.tcp == NULL) {
         mp_raise_OSError(MP_EBADF);
@@ -946,7 +954,7 @@ STATIC mp_obj_t lwip_socket_listen(mp_obj_t self_in, mp_obj_t backlog_in) {
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(lwip_socket_listen_obj, lwip_socket_listen);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lwip_socket_listen_obj, 1, 2, lwip_socket_listen);
 
 STATIC mp_obj_t lwip_socket_accept(mp_obj_t self_in) {
     lwip_socket_obj_t *socket = MP_OBJ_TO_PTR(self_in);
@@ -1369,7 +1377,8 @@ STATIC mp_obj_t lwip_socket_setsockopt(size_t n_args, const mp_obj_t *args) {
         }
 
         // level: IPPROTO_IP
-        case IP_ADD_MEMBERSHIP: {
+        case IP_ADD_MEMBERSHIP:
+        case IP_DROP_MEMBERSHIP: {
             mp_buffer_info_t bufinfo;
             mp_get_buffer_raise(args[3], &bufinfo, MP_BUFFER_READ);
             if (bufinfo.len != sizeof(ip_addr_t) * 2) {
@@ -1377,7 +1386,12 @@ STATIC mp_obj_t lwip_socket_setsockopt(size_t n_args, const mp_obj_t *args) {
             }
 
             // POSIX setsockopt has order: group addr, if addr, lwIP has it vice-versa
-            err_t err = igmp_joingroup((ip_addr_t *)bufinfo.buf + 1, bufinfo.buf);
+            err_t err;
+            if (opt == IP_ADD_MEMBERSHIP) {
+                err = igmp_joingroup((ip_addr_t *)bufinfo.buf + 1, bufinfo.buf);
+            } else {
+                err = igmp_leavegroup((ip_addr_t *)bufinfo.buf + 1, bufinfo.buf);
+            }
             if (err != ERR_OK) {
                 mp_raise_OSError(error_lookup_table[-err]);
             }
@@ -1736,8 +1750,6 @@ STATIC mp_obj_t lwip_print_pcbs() {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(lwip_print_pcbs_obj, lwip_print_pcbs);
 
-#if MICROPY_PY_LWIP
-
 STATIC const mp_rom_map_elem_t mp_module_lwip_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_lwip) },
     { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&mod_lwip_reset_obj) },
@@ -1764,6 +1776,7 @@ STATIC const mp_rom_map_elem_t mp_module_lwip_globals_table[] = {
 
     { MP_ROM_QSTR(MP_QSTR_IPPROTO_IP), MP_ROM_INT(0) },
     { MP_ROM_QSTR(MP_QSTR_IP_ADD_MEMBERSHIP), MP_ROM_INT(IP_ADD_MEMBERSHIP) },
+    { MP_ROM_QSTR(MP_QSTR_IP_DROP_MEMBERSHIP), MP_ROM_INT(IP_DROP_MEMBERSHIP) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_lwip_globals, mp_module_lwip_globals_table);
@@ -1772,5 +1785,12 @@ const mp_obj_module_t mp_module_lwip = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t *)&mp_module_lwip_globals,
 };
+
+MP_REGISTER_MODULE(MP_QSTR_lwip, mp_module_lwip);
+
+// On LWIP-ports, this is the usocket module (replaces extmod/modusocket.c).
+MP_REGISTER_MODULE(MP_QSTR_usocket, mp_module_lwip);
+
+MP_REGISTER_ROOT_POINTER(mp_obj_t lwip_slip_stream);
 
 #endif // MICROPY_PY_LWIP
