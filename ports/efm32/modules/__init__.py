@@ -1,6 +1,6 @@
 # Pre-populate the repl with these common useful things
 from machine import Pin, PWM, reset
-from time import sleep_ms
+#from time import sleep_ms
 import micropython
 micropython.alloc_emergency_exception_buf(100)
 

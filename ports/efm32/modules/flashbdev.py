@@ -7,7 +7,7 @@ class FlashBdev:
     SEC_SHIFT = 12 # 4096 bytes per sector
     SEC_SIZE = 1 << SEC_SHIFT
     START_SEC = 0
-    NUM_BLK = 0x100000 >> SEC_SHIFT
+    NUM_BLK = 0x40000 >> SEC_SHIFT
 
     def __init__(self, blocks=NUM_BLK):
         self.blocks = blocks
@@ -128,5 +128,5 @@ class FlashBdev:
 	self.readblocks(addr >> self.SEC_SHIFT, b, off=addr & (self.SEC_SIZE-1))
 	return b
 
-size = 0x100000 >> 12
+size = 0x40000 >> 12
 bdev = FlashBdev(size) # could reserve space

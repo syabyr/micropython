@@ -3,7 +3,7 @@
 # Reads hex from the serial port and sends it on the wire
 
 import gc
-import os
+import uos
 import sys
 import machine
 from ubinascii import hexlify, unhexlify
