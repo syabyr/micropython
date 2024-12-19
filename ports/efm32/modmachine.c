@@ -39,7 +39,6 @@
 #include "machine_pin.h"
 #include "machine_pwm.h"
 #include "machine_spi.h"
-#include "machine_spiflash.h"
 #include "zrepl.h"
 #include "em_core.h"
 
@@ -127,9 +126,25 @@ static const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_PWM),                 MP_ROM_PTR(&machine_pwm_type) },
     { MP_ROM_QSTR(MP_QSTR_SPI),                 MP_ROM_PTR(&mp_machine_soft_spi_type) },
     { MP_ROM_QSTR(MP_QSTR_SPIFlash),            MP_ROM_PTR(&mp_machine_spiflash_type) },
+    { MP_ROM_QSTR(MP_QSTR_Flash),            MP_ROM_PTR(&mp_machine_spiflash_type) },
     { MP_ROM_QSTR(MP_QSTR_stdio_poll),          MP_ROM_PTR(&machine_stdio_poll_obj) },
     { MP_ROM_QSTR(MP_QSTR_zrepl),               MP_ROM_PTR(&machine_zrepl_obj) },
 };
+
+
+#define MICROPY_PY_MACHINE_SPIFLASH_ENTRY { MP_ROM_QSTR(MP_QSTR_SPIFlash), MP_ROM_PTR(&mp_machine_spiflash_type) },
+#define MICROPY_PY_MACHINE_FLASH_ENTRY { MP_ROM_QSTR(MP_QSTR_Flash), MP_ROM_PTR(&mp_machine_spiflash_type) },
+
+#define MICROPY_PY_MACHINE_EXTRA_GLOBALS \
+    MICROPY_PY_MACHINE_SPIFLASH_ENTRY \
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_machine_flash_read_obj) }, \
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_machine_flash_write_obj) }, \
+    { MP_ROM_QSTR(MP_QSTR_erase), MP_ROM_PTR(&mp_machine_flash_erase_obj) }, \
+    MICROPY_PY_MACHINE_FLASH_ENTRY \
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_machine_flash_read_obj) }, \
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_machine_flash_write_obj) }, \
+    { MP_ROM_QSTR(MP_QSTR_erase), MP_ROM_PTR(&mp_machine_flash_erase_obj) }, \
+
 
 static MP_DEFINE_CONST_DICT(machine_module_globals, machine_module_globals_table);
 
