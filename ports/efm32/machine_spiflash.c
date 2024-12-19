@@ -30,6 +30,9 @@
 #include "drivers/memory/spiflash.h"
 #include "py/runtime.h"
 
+#if MICROPY_PY_MACHINE_SPIFLASH
+
+
 typedef struct _mp_machine_flash_obj_t {
     mp_obj_base_t base;
     mp_machine_soft_spi_obj_t spi;
@@ -174,4 +177,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     MP_TYPE_FLAG_NONE,
     make_new, mp_machine_spiflash_make_new,  // 确保有 make_new 函数
     locals_dict, &mp_machine_spiflash_locals_dict
-);
+    );
+
+
+#endif // MICROPY_PY_MACHINE_SPI
