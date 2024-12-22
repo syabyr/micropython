@@ -140,3 +140,4 @@ const mp_obj_module_t uos_module = {
     .globals = (mp_obj_dict_t*)&os_module_globals,
 };
 MP_REGISTER_MODULE(MP_QSTR_uos,uos_module);
+MP_REGISTER_MODULE(MP_QSTR_os,uos_module);

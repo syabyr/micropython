@@ -7,7 +7,6 @@
 #include "mphalport.h"
 #include "machine_pin.h"
 #include "em_timer.h"
-#include "machine_pwm.h"
 
 void mp_hal_pwm_init(void)
 {
