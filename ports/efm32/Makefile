@@ -111,6 +111,7 @@ SRC_C = \
 	radio.c \
 	zrepl.c \
 	machine_spiflash.c \
+	machine_rtc.c \
 	utime_mphal.c \
 
 PYLIB_SRC_C = \
