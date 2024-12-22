@@ -38,6 +38,18 @@ extern const mp_obj_type_t pyb_rtc_type;
 extern const mp_obj_type_t machine_pwm_type;
 extern const mp_obj_type_t machine_pin_type;
 extern const mp_obj_type_t mp_machine_soft_spi_type;
+
+extern const mp_obj_type_t machine_mem_type;
+
+typedef struct _machine_mem_obj_t {
+    mp_obj_base_t base;
+    unsigned elem_size; // in bytes
+} machine_mem_obj_t;
+
+extern const machine_mem_obj_t machine_mem8_obj;
+extern const machine_mem_obj_t machine_mem16_obj;
+extern const machine_mem_obj_t machine_mem32_obj;
+
 /*
 extern const mp_obj_type_t machine_adc_type;
 extern const mp_obj_type_t machine_timer_type;
