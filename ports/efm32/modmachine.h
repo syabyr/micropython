@@ -37,6 +37,7 @@ extern const mp_obj_type_t mp_machine_spiflash_erase_obj;
 extern const mp_obj_type_t pyb_rtc_type;
 extern const mp_obj_type_t machine_pwm_type;
 extern const mp_obj_type_t machine_pin_type;
+extern const mp_obj_type_t mp_machine_soft_spi_type;
 /*
 extern const mp_obj_type_t machine_adc_type;
 extern const mp_obj_type_t machine_timer_type;

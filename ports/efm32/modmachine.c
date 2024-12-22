@@ -36,7 +36,6 @@
 #include "py/mphal.h"
 #include "py/stream.h"
 #include "machine_mem.h"
-#include "machine_spi.h"
 #include "zrepl.h"
 #include "em_core.h"
 
