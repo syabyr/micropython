@@ -6,12 +6,11 @@
 #include "py/mphal.h"
 #include "mpconfigport.h"
 #include "mphalport.h"
-#include "machine_pin.h"
 #include "em_gpio.h"
 
 #define NO_PWM 0xFF
 #define PWM(channel,location)	((channel) << 4 | (location))
-
+extern const mp_obj_type_t machine_pin_type;
 static const struct _mp_hal_pin_t pins[] = {
 // This is kind of nasty and should be done waaay saner, but for now.
 #include "pin_defs.h"

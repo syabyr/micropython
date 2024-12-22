@@ -32,7 +32,6 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "mphalport.h"
-#include "machine_pin.h"
 #include "extmod/virtpin.h"
 
 #define GPIO_MODE_INPUT 1

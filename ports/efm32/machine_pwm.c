@@ -29,7 +29,6 @@
 #include "py/runtime.h"
 #include "modmachine.h"
 #include "mphalport.h"
-#include "extmod/machine_pin.h"
 
 // Forward dec'l
 extern const mp_obj_type_t machine_pwm_type;
