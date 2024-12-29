@@ -141,6 +141,13 @@
 #define MICROPY_PY_BINASCII         (1)
 
 
+// extra built in modules
+
+// used by zbpy.NIC
+#define MICROPY_PY_BUILTINS_BYTES_HEX (1)
+
+
+
 // type definitions for the specific machine
 
 #define MICROPY_MAKE_POINTER_CALLABLE(p) ((void*)((mp_uint_t)(p) | 1))
