@@ -34,6 +34,8 @@ extern const mp_obj_type_t mp_machine_spiflash_read_obj;
 extern const mp_obj_type_t mp_machine_spiflash_write_obj;
 extern const mp_obj_type_t mp_machine_spiflash_erase_obj;
 
+extern const mp_obj_type_t machine_i2c_type;
+
 extern const mp_obj_type_t pyb_rtc_type;
 extern const mp_obj_type_t machine_pwm_type;
 extern const mp_obj_type_t machine_pin_type;
@@ -49,6 +51,14 @@ typedef struct _machine_mem_obj_t {
 extern const machine_mem_obj_t machine_mem8_obj;
 extern const machine_mem_obj_t machine_mem16_obj;
 extern const machine_mem_obj_t machine_mem32_obj;
+
+
+#if MICROPY_PY_MACHINE_SOFTI2C
+extern const mp_obj_type_t mp_machine_soft_i2c_type;
+#endif
+#if MICROPY_PY_MACHINE_I2C || MICROPY_PY_MACHINE_SOFTI2C
+extern const mp_obj_dict_t mp_machine_i2c_locals_dict;
+#endif
 
 /*
 extern const mp_obj_type_t machine_adc_type;

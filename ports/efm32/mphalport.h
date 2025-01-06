@@ -24,7 +24,12 @@ extern void mp_hal_pin_output(mp_hal_pin_obj_t pin);
 extern void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin);
 extern int mp_hal_pin_read(mp_hal_pin_obj_t pin);
 extern void mp_hal_pin_write(mp_hal_pin_obj_t pin, int value);
+extern void mp_hal_pin_pull_up(mp_hal_pin_obj_t pin);
+extern void mp_hal_pin_pull_down(mp_hal_pin_obj_t pin);
 
+
+#define mp_hal_pin_od_low(p)    mp_hal_pin_write(p, 0)
+#define mp_hal_pin_od_high(p)   mp_hal_pin_write(p, 1)
 
 // pwm functions
 struct _mp_hal_pwm_t {

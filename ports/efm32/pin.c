@@ -40,6 +40,16 @@ void mp_hal_pin_input(mp_hal_pin_obj_t pin)
 	GPIO_PinModeSet(pin->port, pin->pin, gpioModeInput, 0);
 }
 
+void mp_hal_pin_pull_up(mp_hal_pin_obj_t pin)
+{
+	GPIO_PinModeSet(pin->port, pin->pin, gpioModeInputPull, 1); // down?
+}
+
+void mp_hal_pin_pull_down(mp_hal_pin_obj_t pin)
+{
+	GPIO_PinModeSet(pin->port, pin->pin, gpioModeInputPull, 0); // up?
+}
+
 void mp_hal_pin_output(mp_hal_pin_obj_t pin)
 {
 	GPIO_PinModeSet(pin->port, pin->pin, gpioModePushPull, 0);
@@ -47,7 +57,8 @@ void mp_hal_pin_output(mp_hal_pin_obj_t pin)
 
 void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin)
 {
-	GPIO_PinModeSet(pin->port, pin->pin, gpioModeInputPull, 1); // up?
+	GPIO_PinModeSet(pin->port, pin->pin, gpioModeWiredAnd, 0);
+	//GPIO_PinModeSet(pin->port, pin->pin, gpioModeInputPull, 1); // up?
 }
 
 int mp_hal_pin_read(mp_hal_pin_obj_t pin)

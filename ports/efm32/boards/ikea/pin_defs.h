@@ -4,10 +4,10 @@
     { {&machine_pin_type}, gpioPortB, 13, 3, PWM(3,5) }, // pcb label PWM1
 
     // right side going up
-    { {&machine_pin_type}, gpioPortB, 15, 4, NO_PWM },
-    { {&machine_pin_type}, gpioPortB, 14, 5, NO_PWM },
-    { {&machine_pin_type}, gpioPortC, 12, 6, NO_PWM }, // TX
-    { {&machine_pin_type}, gpioPortC, 11, 7, NO_PWM }, // RX
+    { {&machine_pin_type}, gpioPortB, 15, 4, NO_PWM },  //TX
+    { {&machine_pin_type}, gpioPortB, 14, 5, NO_PWM },  //RX
+    { {&machine_pin_type}, gpioPortC, 11, 6, NO_PWM }, 
+    { {&machine_pin_type}, gpioPortC, 10, 7, NO_PWM },
     { {&machine_pin_type}, gpioPortF, 0,  8, NO_PWM }, // SWCLK
     { {&machine_pin_type}, gpioPortF, 1,  9, NO_PWM }, // SWD
     { {&machine_pin_type}, gpioPortF, 2,  10, NO_PWM }, // ?

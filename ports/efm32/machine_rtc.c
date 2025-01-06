@@ -3,11 +3,17 @@
 
 #include <stdio.h>
 #include <string.h>
-
+#include <time.h>
+#include <sys/time.h>
 #include "py/runtime.h"
 #include "shared/timeutils/timeutils.h"
-#include "em_rtc.h"
+#include "em_rtcc.h"
+#include "em_cmu.h"
 #include "modmachine.h"
+
+#define DELAY_SECONDS 5.0
+#define ULFRCOFREQ    1000
+#define COMPARE_TOP   (DELAY_SECONDS * ULFRCOFREQ - 1)
 
 typedef struct _pyb_rtc_obj_t {
     mp_obj_base_t base;
@@ -24,6 +30,14 @@ static mp_obj_t pyb_rtc_make_new(const mp_obj_type_t *type, size_t n_args, size_
     return (mp_obj_t)&pyb_rtc_obj;
 }
 
+static mp_obj_t machine_rtc_datetime_helper(mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args == 1) {
+        // Get time
+        return mp_const_none;
+    }
+    return mp_const_none;
+}
+
 void mp_hal_rtc_init(void) {
     // system_get_rtc_time() is always 0 after reset/deepsleep
     //rtc_last_ticks = system_get_rtc_time();
@@ -31,6 +45,39 @@ void mp_hal_rtc_init(void) {
     // reset ALARM0 state
     //pyb_rtc_alarm0_wake = 0;
     //pyb_rtc_alarm0_expiry = 0;
+
+    // Configure the RTCC settings
+    RTCC_Init_TypeDef rtcc = RTCC_INIT_DEFAULT;
+    rtcc.enable = false;
+    rtcc.presc = rtccCntPresc_1;
+    rtcc.cntMode = rtccCntModeCalendar;
+    rtcc.cntWrapOnCCV1 = true;
+
+    // Configure the compare settings
+    RTCC_CCChConf_TypeDef compare = RTCC_CH_INIT_COMPARE_DEFAULT;
+
+    // Turn on the clock for the RTCC
+    CMU_ClockEnable(cmuClock_RTCC, true);
+
+    // Initialise RTCC with pre-defined settings
+    RTCC_Init(&rtcc);
+
+    // Set current date and time
+    RTCC_DateSet(0);
+    RTCC_TimeSet(0);
+
+    // Initialise RTCC compare with a date, the date when interrupt will occur
+    RTCC_ChannelInit(1, &compare);
+    RTCC_ChannelDateSet(1, 0);
+    RTCC_ChannelTimeSet(1,0);
+
+    // Set channel 1 to cause an interrupt
+    RTCC_IntEnable(RTCC_IEN_CC1);
+    NVIC_ClearPendingIRQ(RTCC_IRQn);
+    NVIC_EnableIRQ(RTCC_IRQn);
+
+    // Start counter after all initialisations are complete
+    RTCC_Enable(true);
 }
 
 void rtc_prepare_deepsleep(uint64_t sleep_us) {
@@ -41,7 +88,7 @@ void rtc_prepare_deepsleep(uint64_t sleep_us) {
 
 // for tradfri
 static mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
-    return mp_const_none;
+    return machine_rtc_datetime_helper(n_args, args);
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_datetime_obj, 1, 2, pyb_rtc_datetime);
 

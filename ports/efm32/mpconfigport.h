@@ -101,6 +101,9 @@
 #define MICROPY_PY_MACHINE_PWM_DUTY_U16_NS  (1)
 #define MICROPY_PY_MACHINE_PWM_INCLUDEFILE  "ports/efm32/pwm.c"
 
+// I2C
+#define MICROPY_PY_MACHINE_SOFTI2C (1)
+
 // Allow VFS access to the flash chip
 #define MICROPY_PY_MACHINE_SPI      (1)
 #define MICROPY_PY_MACHINE_SPIFLASH (1)

@@ -126,6 +126,7 @@ PYMOD_SRC_C = \
 	extmod/machine_mem.c \
 	extmod/machine_pwm.c \
 	extmod/machine_spi.c \
+	extmod/machine_i2c.c \
 	extmod/modbinascii.c \
 	drivers/bus/softspi.c \
 	drivers/memory/spiflash.c \
