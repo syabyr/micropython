@@ -70,7 +70,7 @@
 #define MICROPY_PY_STRUCT           (1)
 
 #define MICROPY_PY_OS                               (1)
-#define MICROPY_PY_OS_INCLUDEFILE                   "ports/efm32/moduos.c"
+#define MICROPY_PY_OS_INCLUDEFILE                   "ports/efr32/moduos.c"
 //#define MICROPY_PY_OS_DUPTERM                       (1)
 #define MICROPY_PY_OS_SYNC                          (1)
 #define MICROPY_PY_OS_URANDOM                       (1)
@@ -99,7 +99,7 @@
 #define MICROPY_PY_MACHINE_PWM_INIT         (1)
 #define MICROPY_PY_MACHINE_PWM_DUTY         (1)
 #define MICROPY_PY_MACHINE_PWM_DUTY_U16_NS  (1)
-#define MICROPY_PY_MACHINE_PWM_INCLUDEFILE  "ports/efm32/pwm.c"
+#define MICROPY_PY_MACHINE_PWM_INCLUDEFILE  "ports/efr32/pwm.c"
 
 // I2C
 #define MICROPY_PY_MACHINE_SOFTI2C (1)
