@@ -3,6 +3,7 @@
 
 #include <py/obj.h>
 #include "mpconfigport.h"
+#include "em_gpio.h" // 包含GPIO类型定义
 
 #define mp_hal_delay_us_fast mp_hal_delay_us
 
@@ -10,7 +11,8 @@ void mp_hal_set_interrupt_char(char c);
 
 // gpio functions
 struct _mp_hal_pin_t {
-	unsigned port;         // GPIO端口，如gpioPortA
+    mp_obj_base_t base;    // MicroPython对象公共头，必须放在第一位
+	GPIO_Port_TypeDef port; // 硬件原生GPIO端口类型
 	unsigned pin;          // 引脚号，0-15
 	uint8_t gpio_id;       // 逻辑引脚编号，对应Python里的Pin(n)
 	uint8_t pwm_config;    // PWM配置，ff == 不支持PWM

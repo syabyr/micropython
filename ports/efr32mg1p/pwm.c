@@ -5,7 +5,7 @@
 #include "py/binary.h"
 #include "py/mphal.h"
 #include "mphalport.h"
-#include "extmod/machine_pin.h"
+#include "machine_pin.h"
 #include "em_timer.h"
 
 void mp_hal_pwm_init(void)

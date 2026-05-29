@@ -9,6 +9,9 @@
 #include "machine_pin.h"
 #include "em_gpio.h"
 
+// 声明外部定义的pin类型
+extern const mp_obj_type_t machine_pin_type;
+
 #define NO_PWM 0xFF
 #define PWM(channel,location)	((channel) << 4 | (location))
 
