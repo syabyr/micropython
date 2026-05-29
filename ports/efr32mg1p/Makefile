@@ -125,10 +125,10 @@ PYLIB_SRC_C = \
 PYMOD_SRC_C = \
 	extmod/modbinascii.c \
 	extmod/machine_mem.c \
-	#extmod/machine_pin.c \
+	machine_pin.c \
 	extmod/machine_pwm.c \
 	#extmod/machine_spi.c \
-	#extmod/machine_spiflash.c \
+	#machine_spiflash.c \ # 先注释掉SPIFlash，等Pin功能正常后再启用
 	#extmod/utime_mphal.c \
 	#drivers/bus/softspi.c \
 	#drivers/memory/spiflash.c \

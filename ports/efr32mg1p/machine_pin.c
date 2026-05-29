@@ -32,7 +32,7 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "mphalport.h"
-#include "extmod/machine_pin.h"
+#include "machine_pin.h"
 #include "extmod/virtpin.h"
 
 #define GPIO_MODE_INPUT 1
@@ -214,13 +214,15 @@ STATIC const mp_pin_p_t pin_pin_p = {
   .ioctl = pin_ioctl,
 };
 
-const mp_obj_type_t machine_pin_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_Pin,
-    .print = mp_pin_print,
-    .make_new = mp_pin_make_new,
-    .call = machine_pin_call,
-    .protocol = &pin_pin_p,
-    .locals_dict = (mp_obj_t)&machine_pin_locals_dict,
-};
+// 新的类型定义方式，适配带slots的MicroPython版本
+MP_DEFINE_CONST_OBJ_TYPE(
+    machine_pin_type,
+    MP_QSTR_Pin,
+    MP_TYPE_FLAG_NONE,
+    print, mp_pin_print,
+    make_new, mp_pin_make_new,
+    call, machine_pin_call,
+    protocol, &pin_pin_p,
+    locals_dict, &machine_pin_locals_dict
+);
 

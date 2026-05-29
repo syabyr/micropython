@@ -36,7 +36,10 @@
 #include "py/mphal.h"
 #include "py/stream.h"
 #include "extmod/modmachine.h"
-#include "extmod/machine_pin.h"
+#include "machine_pin.h"
+
+// 声明外部定义的Pin类型
+extern const mp_obj_type_t machine_pin_type;
 //#include "extmod/machine_pwm.h"
 //#include "extmod/machine_spi.h"
 //#include "extmod/machine_spiflash.h"
@@ -123,7 +126,7 @@ static const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_mem32),               MP_ROM_PTR(&machine_mem32_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_Crypto),              MP_ROM_PTR(&mp_module_crypto) },
-    //{ MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) }, // Pin模块暂未实现
+    { MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) }, // Pin模块
     /*
     { MP_ROM_QSTR(MP_QSTR_PWM),                 MP_ROM_PTR(&machine_pwm_type) },
     */

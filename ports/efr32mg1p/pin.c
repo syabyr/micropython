@@ -6,7 +6,7 @@
 #include "py/mphal.h"
 #include "mpconfigport.h"
 #include "mphalport.h"
-#include "extmod/machine_pin.h"
+#include "machine_pin.h"
 #include "em_gpio.h"
 
 #define NO_PWM 0xFF

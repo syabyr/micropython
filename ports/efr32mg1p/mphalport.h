@@ -10,11 +10,10 @@ void mp_hal_set_interrupt_char(char c);
 
 // gpio functions
 struct _mp_hal_pin_t {
-	mp_obj_base_t base;
-	unsigned port;
-	unsigned pin;
-	uint8_t gpio_id;
-	uint8_t pwm_config; // ff == not used
+	unsigned port;         // GPIO端口，如gpioPortA
+	unsigned pin;          // 引脚号，0-15
+	uint8_t gpio_id;       // 逻辑引脚编号，对应Python里的Pin(n)
+	uint8_t pwm_config;    // PWM配置，ff == 不支持PWM
 };
 
 extern mp_hal_pin_obj_t mp_hal_pin_lookup(unsigned pin_id);
