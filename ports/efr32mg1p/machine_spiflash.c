@@ -165,12 +165,12 @@ STATIC const mp_rom_map_elem_t machine_spiflash_locals_dict_table[] = {
 
 MP_DEFINE_CONST_DICT(mp_machine_spiflash_locals_dict, machine_spiflash_locals_dict_table);
 
-const mp_obj_type_t mp_machine_spiflash_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_SPIFlash,
-    //.print = mp_machine_spiflash_print,
-    .make_new = mp_machine_spiflash_make_new,
-    .locals_dict = (mp_obj_dict_t*)&mp_machine_spiflash_locals_dict,
-};
+MP_DEFINE_CONST_OBJ_TYPE(
+    mp_machine_spiflash_type,
+    MP_QSTR_SPIFlash,
+    MP_TYPE_FLAG_NONE,
+    make_new, mp_machine_spiflash_make_new,
+    locals_dict, &mp_machine_spiflash_locals_dict
+    );
 
 #endif // MICROPY_PY_MACHINE_SPI
