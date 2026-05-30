@@ -3,12 +3,14 @@
 
 #include "py/obj.h"
 #include "py/mphal.h"
+#include "drivers/bus/spi.h"
 #include "machine_pin.h"
 #include "machine_spi.h"
 
 typedef struct _machine_spiflash_obj_t {
     mp_obj_base_t base;
-    mp_hal_spi_obj_t spi;
+    void *spi;
+    const mp_spi_proto_t *spi_proto;
     mp_hal_pin_obj_t cs;
 } machine_spiflash_obj_t;
 

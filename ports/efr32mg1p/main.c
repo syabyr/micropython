@@ -36,6 +36,7 @@
 #include "py/stackctrl.h"
 #include "py/mperrno.h"
 #include "py/builtin.h"
+#include "drivers/bus/spi.h"
 #include "shared/runtime/pyexec.h"
 #include "extmod/vfs.h"
 #include "extmod/vfs_lfs.h"
@@ -78,7 +79,9 @@ MP_NOINLINE static bool init_flash_fs(void) {
 	}
 
 	machine_spiflash_obj_t *bdev = mp_obj_malloc(machine_spiflash_obj_t, &machine_spiflash_type);
-	bdev->spi = mp_hal_spi_get(EFR32_SPIFLASH_SPI_ID);
+	static mp_soft_spi_obj_t soft_spi;
+	bdev->spi = &soft_spi;
+	bdev->spi_proto = &mp_soft_spi_proto;
 	bdev->cs = mp_hal_pin_lookup(EFR32_SPIFLASH_CS_PIN);
 	if (bdev->cs == NULL) {
 		printf("MPY: invalid SPI flash CS pin\n");
@@ -86,10 +89,22 @@ MP_NOINLINE static bool init_flash_fs(void) {
 		return false;
 	}
 
+	soft_spi.delay_half = 1;
+	soft_spi.polarity = 0;
+	soft_spi.phase = 0;
+	soft_spi.firstbit = MICROPY_PY_MACHINE_SPI_MSB;
+	soft_spi.sck = mp_hal_pin_lookup(EFR32_SPIFLASH_SCK_PIN);
+	soft_spi.mosi = mp_hal_pin_lookup(EFR32_SPIFLASH_MOSI_PIN);
+	soft_spi.miso = mp_hal_pin_lookup(EFR32_SPIFLASH_MISO_PIN);
+	if (soft_spi.sck == NULL || soft_spi.mosi == NULL || soft_spi.miso == NULL) {
+		printf("MPY: invalid SPI flash pin\n");
+		nlr_pop();
+		return false;
+	}
+	mp_soft_spi_ioctl(&soft_spi, MP_SPI_IOCTL_INIT);
+
 	mp_hal_pin_output(bdev->cs);
 	mp_hal_pin_write(bdev->cs, 1);
-	mp_hal_spi_init(bdev->spi, 8000000, 0, 0, 8, 0,
-		EFR32_SPIFLASH_SCK_PIN, EFR32_SPIFLASH_MOSI_PIN, EFR32_SPIFLASH_MISO_PIN);
 
 	mp_obj_t bdev_obj = MP_OBJ_FROM_PTR(bdev);
 	mp_obj_t mount_point = MP_OBJ_NEW_QSTR(MP_QSTR__slash_);

@@ -29,6 +29,7 @@
 #include "py/mperrno.h"
 #include "py/mphal.h"
 #include "extmod/vfs.h"
+#include "drivers/bus/spi.h"
 #include "machine_pin.h"
 #include "machine_spi.h"
 #include "machine_spiflash.h"
@@ -55,30 +56,48 @@
 #define CS_LOW(pin)  mp_hal_pin_write(pin, 0)
 #define CS_HIGH(pin) mp_hal_pin_write(pin, 1)
 
-static void wait_ready(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs);
-static void write_enable(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs);
+static int machine_spiflash_hw_spi_ioctl(void *self_in, uint32_t cmd) {
+    (void)self_in;
+    (void)cmd;
+    return 0;
+}
+
+static void machine_spiflash_hw_spi_transfer(void *self_in, size_t len, const uint8_t *src, uint8_t *dest) {
+    mp_hal_spi_transfer((mp_hal_spi_obj_t)self_in, len, src, dest);
+}
+
+static const mp_spi_proto_t machine_spiflash_hw_spi_proto = {
+    .ioctl = machine_spiflash_hw_spi_ioctl,
+    .transfer = machine_spiflash_hw_spi_transfer,
+};
+
+static void wait_ready(machine_spiflash_obj_t *self);
+static void write_enable(machine_spiflash_obj_t *self);
 
 // 带CS控制的SPI传输
-static void cs_transfer(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs,
+static void cs_transfer(machine_spiflash_obj_t *self,
                         size_t cmd_len, const uint8_t *cmd,
                         size_t data_len, uint8_t *data, bool read) {
-    CS_LOW(cs);
+    CS_LOW(self->cs);
     // 发送命令
-    for (size_t i = 0; i < cmd_len; i++) {
-        uint8_t tx = cmd[i];
-        mp_hal_spi_transfer(spi, 1, &tx, NULL);
-    }
+    self->spi_proto->transfer(self->spi, cmd_len, cmd, NULL);
     // 发送/接收数据
     if (data_len > 0) {
-        mp_hal_spi_transfer(spi, data_len, read ? NULL : data,
-                            read ? data : NULL);
+        if (read) {
+            for (size_t i = 0; i < data_len; ++i) {
+                uint8_t tx = 0xff;
+                self->spi_proto->transfer(self->spi, 1, &tx, &data[i]);
+            }
+        } else {
+            self->spi_proto->transfer(self->spi, data_len, data, NULL);
+        }
     }
-    CS_HIGH(cs);
+    CS_HIGH(self->cs);
 }
 
 static int spiflash_read_bytes(machine_spiflash_obj_t *self, uint32_t addr, size_t len, uint8_t *dest) {
     uint8_t cmd[4] = {CMD_READ, (uint8_t)(addr >> 16), (uint8_t)(addr >> 8), (uint8_t)addr};
-    cs_transfer(self->spi, self->cs, 4, cmd, len, dest, true);
+    cs_transfer(self, 4, cmd, len, dest, true);
     return 0;
 }
 
@@ -86,10 +105,10 @@ static int spiflash_erase_block(machine_spiflash_obj_t *self, uint32_t addr) {
     if (addr % SPIFLASH_ERASE_BLOCK_SIZE != 0) {
         return -MP_EINVAL;
     }
-    write_enable(self->spi, self->cs);
+    write_enable(self);
     uint8_t cmd[4] = {CMD_SE, (uint8_t)(addr >> 16), (uint8_t)(addr >> 8), (uint8_t)addr};
-    cs_transfer(self->spi, self->cs, 4, cmd, 0, NULL, false);
-    wait_ready(self->spi, self->cs);
+    cs_transfer(self, 4, cmd, 0, NULL, false);
+    wait_ready(self);
     return 0;
 }
 
@@ -101,10 +120,10 @@ static int spiflash_write_bytes(machine_spiflash_obj_t *self, uint32_t addr, con
             chunk = len;
         }
 
-        write_enable(self->spi, self->cs);
+        write_enable(self);
         uint8_t cmd[4] = {CMD_PP, (uint8_t)(addr >> 16), (uint8_t)(addr >> 8), (uint8_t)addr};
-        cs_transfer(self->spi, self->cs, 4, cmd, chunk, (uint8_t *)src, false);
-        wait_ready(self->spi, self->cs);
+        cs_transfer(self, 4, cmd, chunk, (uint8_t *)src, false);
+        wait_ready(self);
 
         addr += chunk;
         src += chunk;
@@ -114,20 +133,20 @@ static int spiflash_write_bytes(machine_spiflash_obj_t *self, uint32_t addr, con
 }
 
 // 等待Flash空闲
-static void wait_ready(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs) {
+static void wait_ready(machine_spiflash_obj_t *self) {
     uint8_t cmd = CMD_RDSR;
     uint8_t sr;
     do {
-        cs_transfer(spi, cs, 1, &cmd, 1, &sr, true);
+        cs_transfer(self, 1, &cmd, 1, &sr, true);
     } while (sr & 0x01);
 }
 
 // 写使能
-static void write_enable(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs) {
+static void write_enable(machine_spiflash_obj_t *self) {
     uint8_t cmd = CMD_WREN;
-    CS_LOW(cs);
-    mp_hal_spi_transfer(spi, 1, &cmd, NULL);
-    CS_HIGH(cs);
+    CS_LOW(self->cs);
+    self->spi_proto->transfer(self->spi, 1, &cmd, NULL);
+    CS_HIGH(self->cs);
 }
 
 // Constructor supports either SPIFlash(spi, cs) or SPIFlash(cs, spi).
@@ -168,6 +187,7 @@ STATIC mp_obj_t machine_spiflash_make_new(const mp_obj_type_t *type, size_t n_ar
     machine_spiflash_obj_t *self = mp_obj_malloc(machine_spiflash_obj_t, type);
     self->base.type = type;
     self->spi = spi_obj->spi;
+    self->spi_proto = &machine_spiflash_hw_spi_proto;
     self->cs = cs;
 
     return MP_OBJ_FROM_PTR(self);
@@ -178,7 +198,7 @@ STATIC mp_obj_t machine_spiflash_readid(mp_obj_t self_in) {
     machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(self_in);
     uint8_t cmd = CMD_RDID;
     uint8_t buf[3];
-    cs_transfer(self->spi, self->cs, 1, &cmd, 3, buf, true);
+    cs_transfer(self, 1, &cmd, 3, buf, true);
     return mp_obj_new_bytes(buf, 3);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(machine_spiflash_readid_obj, machine_spiflash_readid);

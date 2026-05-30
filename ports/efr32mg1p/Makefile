@@ -131,16 +131,13 @@ PYMOD_SRC_C = \
 	extmod/machine_pwm.c \
 	machine_spi.c \
 	machine_spiflash.c \
-	#extmod/utime_mphal.c \
-	#drivers/bus/softspi.c \
-	#drivers/memory/spiflash.c \
-	\
-	#extmod/vfs.c \
-	#extmod/vfs_reader.c \
-	#extmod/vfs_blockdev.c \
-	#extmod/vfs_lfs.c \
-	#lib/littlefs/lfs2.c \
-	#lib/littlefs/lfs2_util.c \
+	drivers/bus/softspi.c \
+	extmod/vfs.c \
+	extmod/vfs_reader.c \
+	extmod/vfs_blockdev.c \
+	extmod/vfs_lfs.c \
+	lib/littlefs/lfs2.c \
+	lib/littlefs/lfs2_util.c \
 
 # Scan all of the source, python libraries and python module files for QSTR
 SRC_QSTR += $(SRC_C)
