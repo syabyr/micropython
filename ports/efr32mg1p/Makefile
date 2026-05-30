@@ -107,6 +107,7 @@ SRC_C = \
 	uart_core.c \
 	pin.c \
 	pwm.c \
+	spi.c \
 	modmachine.c \
 	modutime.c \
 	modcrypto.c \
@@ -127,8 +128,8 @@ PYMOD_SRC_C = \
 	extmod/machine_mem.c \
 	machine_pin.c \
 	extmod/machine_pwm.c \
-	#extmod/machine_spi.c \
-	#machine_spiflash.c \ # 先注释掉SPIFlash，等Pin功能正常后再启用
+	machine_spi.c \
+	machine_spiflash.c \
 	#extmod/utime_mphal.c \
 	#drivers/bus/softspi.c \
 	#drivers/memory/spiflash.c \

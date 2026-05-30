@@ -5,43 +5,25 @@
 #include "em_gpio.h"
 
 
-// GPIOA (0-7)
-{ {&machine_pin_type}, gpioPortA, 0, 0, NO_PWM },
-{ {&machine_pin_type}, gpioPortA, 1, 1, NO_PWM },
-{ {&machine_pin_type}, gpioPortA, 2, 2, NO_PWM },
-{ {&machine_pin_type}, gpioPortA, 3, 3, NO_PWM },
-{ {&machine_pin_type}, gpioPortA, 4, 4, NO_PWM },
-{ {&machine_pin_type}, gpioPortA, 5, 5, NO_PWM },
-{ {&machine_pin_type}, gpioPortA, 6, 6, NO_PWM },
-{ {&machine_pin_type}, gpioPortA, 7, 7, NO_PWM },
+// left side going down
+{ {&machine_pin_type}, gpioPortA, 0,  0, PWM(0,0) }, // pcb label PWM4
+{ {&machine_pin_type}, gpioPortA, 1,  1, PWM(1,0) }, // pcb label PWM3
+{ {&machine_pin_type}, gpioPortB, 12, 2, PWM(2,5) }, // pcb label PWM2
+{ {&machine_pin_type}, gpioPortB, 13, 3, PWM(3,5) }, // pcb label PWM1
 
-// GPIOB (8-15)
-{ {&machine_pin_type}, gpioPortB, 0, 8, NO_PWM },
-{ {&machine_pin_type}, gpioPortB, 1, 9, NO_PWM },
-{ {&machine_pin_type}, gpioPortB, 2, 10, NO_PWM },
-{ {&machine_pin_type}, gpioPortB, 3, 11, NO_PWM },
-{ {&machine_pin_type}, gpioPortB, 4, 12, NO_PWM },
-{ {&machine_pin_type}, gpioPortB, 5, 13, NO_PWM },
-{ {&machine_pin_type}, gpioPortB, 6, 14, NO_PWM },
-{ {&machine_pin_type}, gpioPortB, 7, 15, NO_PWM },
+// right side going up
+{ {&machine_pin_type}, gpioPortB, 15, 4, NO_PWM },
+{ {&machine_pin_type}, gpioPortB, 14, 5, NO_PWM },
+{ {&machine_pin_type}, gpioPortC, 12, 6, NO_PWM }, // TX
+{ {&machine_pin_type}, gpioPortC, 11, 7, NO_PWM }, // RX
+{ {&machine_pin_type}, gpioPortF, 0,  8, NO_PWM }, // SWCLK
+{ {&machine_pin_type}, gpioPortF, 1,  9, NO_PWM }, // SWD
+{ {&machine_pin_type}, gpioPortF, 2,  10, NO_PWM }, // ?
+{ {&machine_pin_type}, gpioPortF, 3,  11, NO_PWM }, // ?
 
-// GPIOC (16-23)
-{ {&machine_pin_type}, gpioPortC, 0, 16, NO_PWM },
-{ {&machine_pin_type}, gpioPortC, 1, 17, NO_PWM },
-{ {&machine_pin_type}, gpioPortC, 2, 18, NO_PWM },
-{ {&machine_pin_type}, gpioPortC, 3, 19, NO_PWM },
-{ {&machine_pin_type}, gpioPortC, 4, 20, NO_PWM },
-{ {&machine_pin_type}, gpioPortC, 5, 21, NO_PWM },
-{ {&machine_pin_type}, gpioPortC, 6, 22, NO_PWM },
-{ {&machine_pin_type}, gpioPortC, 7, 23, NO_PWM },
-
-// GPIOD (24-31)
-{ {&machine_pin_type}, gpioPortD, 0, 24, NO_PWM },
-{ {&machine_pin_type}, gpioPortD, 1, 25, NO_PWM },
-{ {&machine_pin_type}, gpioPortD, 2, 26, NO_PWM },
-{ {&machine_pin_type}, gpioPortD, 3, 27, NO_PWM },
-{ {&machine_pin_type}, gpioPortD, 4, 28, NO_PWM },
-{ {&machine_pin_type}, gpioPortD, 5, 29, NO_PWM },
-{ {&machine_pin_type}, gpioPortD, 6, 30, NO_PWM },
-{ {&machine_pin_type}, gpioPortD, 7, 31, NO_PWM },
+// internal connections
+{ {&machine_pin_type}, gpioPortB, 11,  12, NO_PWM }, // spi cs
+{ {&machine_pin_type}, gpioPortD, 13,  13, NO_PWM }, // spi sck
+{ {&machine_pin_type}, gpioPortD, 14,  14, NO_PWM }, // spi miso
+{ {&machine_pin_type}, gpioPortD, 15,  15, NO_PWM }, // spi mosi
 

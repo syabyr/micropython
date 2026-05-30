@@ -37,12 +37,8 @@
 #include "py/stream.h"
 #include "extmod/modmachine.h"
 #include "machine_pin.h"
-
-// 声明外部定义的Pin类型
-extern const mp_obj_type_t machine_pin_type;
-//#include "extmod/machine_pwm.h"
-//#include "extmod/machine_spi.h"
-//#include "extmod/machine_spiflash.h"
+#include "machine_spi.h"
+#include "machine_spiflash.h"
 #include "zrepl.h"
 #include "em_core.h"
 
@@ -127,11 +123,12 @@ static const mp_rom_map_elem_t machine_module_globals_table[] = {
 
     { MP_ROM_QSTR(MP_QSTR_Crypto),              MP_ROM_PTR(&mp_module_crypto) },
     { MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) }, // Pin模块
+    { MP_ROM_QSTR(MP_QSTR_SPI),                 MP_ROM_PTR(&machine_spi_type) }, // SPI模块
     /*
     { MP_ROM_QSTR(MP_QSTR_PWM),                 MP_ROM_PTR(&machine_pwm_type) },
     */
-    //{ MP_ROM_QSTR(MP_QSTR_SPI),                 MP_ROM_PTR(&mp_machine_soft_spi_type) },
-    //{ MP_ROM_QSTR(MP_QSTR_SPIFlash),            MP_ROM_PTR(&mp_machine_spiflash_type) },
+    { MP_ROM_QSTR(MP_QSTR_SPIFlash),            MP_ROM_PTR(&machine_spiflash_type) },
+    { MP_ROM_QSTR(MP_QSTR_Flash),               MP_ROM_PTR(&machine_spiflash_type) }, // Flash作为SPIFlash别名
     { MP_ROM_QSTR(MP_QSTR_stdio_poll),          MP_ROM_PTR(&machine_stdio_poll_obj) },
     { MP_ROM_QSTR(MP_QSTR_zrepl),               MP_ROM_PTR(&machine_zrepl_obj) },
 };

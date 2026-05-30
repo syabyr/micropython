@@ -3,8 +3,6 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2016 Damien P. George
- *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -28,149 +26,171 @@
 #include <string.h>
 
 #include "py/runtime.h"
-#include "extmod/machine_spiflash.h"
+#include "py/mphal.h"
+#include "machine_pin.h"
+#include "machine_spi.h"
+#include "machine_spiflash.h"
 
 #if MICROPY_PY_MACHINE_SPIFLASH
 
-/******************************************************************************/
-// MicroPython bindings for generic machine.SPIFlash
+// Flash命令
+#define CMD_WREN         0x06
+#define CMD_RDSR         0x05
+#define CMD_READ         0x03
+#define CMD_PP           0x02
+#define CMD_SE           0x20
+#define CMD_RDID         0x9F
+#define CMD_CHIP_ERASE   0xC7
 
-STATIC mp_obj_t mp_machine_spiflash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args)
-{
-    //mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
+#define CS_LOW(pin)  mp_hal_pin_write(pin, 0)
+#define CS_HIGH(pin) mp_hal_pin_write(pin, 1)
 
-/*
-    static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_cs, MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_spi, MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-    };
+// 带CS控制的SPI传输
+static void cs_transfer(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs,
+                        size_t cmd_len, const uint8_t *cmd,
+                        size_t data_len, uint8_t *data, bool read) {
+    CS_LOW(cs);
+    // 发送命令
+    for (size_t i = 0; i < cmd_len; i++) {
+        uint8_t tx = cmd[i];
+        mp_hal_spi_transfer(spi, 1, &tx, NULL);
+    }
+    // 发送/接收数据
+    if (data_len > 0) {
+        mp_hal_spi_transfer(spi, data_len, read ? NULL : data,
+                            read ? data : NULL);
+    }
+    CS_HIGH(cs);
+}
 
-    // parse args
-    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-    mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+// 等待Flash空闲
+static void wait_ready(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs) {
+    uint8_t cmd = CMD_RDSR;
+    uint8_t sr;
+    do {
+        cs_transfer(spi, cs, 1, &cmd, 1, &sr, true);
+    } while (sr & 0x01);
+}
 
-    mp_obj_t cs_obj = args[0].u_obj;
-    mp_obj_t spi_obj = args[1].u_obj;
-*/
-    mp_obj_t cs_obj = all_args[0];
-    mp_obj_t spi_obj = all_args[1];
+// 写使能
+static void write_enable(mp_hal_spi_obj_t spi, mp_hal_pin_obj_t cs) {
+    uint8_t cmd = CMD_WREN;
+    CS_LOW(cs);
+    mp_hal_spi_transfer(spi, 1, &cmd, NULL);
+    CS_HIGH(cs);
+}
 
-    if (cs_obj == MP_OBJ_NULL || spi_obj == MP_OBJ_NULL)
-	mp_raise_ValueError("cs and spi must be specified");
+// 构造函数: SPIFlash(spi, cs)
+STATIC mp_obj_t machine_spiflash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+    // 需要2个参数: spi对象和cs引脚
+    if (n_args < 2) {
+        mp_raise_TypeError("SPIFlash(spi, cs)");
+    }
 
-    // create new object
-    mp_machine_spiflash_obj_t *self = m_new_obj(mp_machine_spiflash_obj_t);
-    self->base.type = &mp_machine_spiflash_type;
+    // 从参数获取spi对象（第一个参数是spi实例）
+    machine_spi_obj_t *spi_obj = MP_OBJ_TO_PTR(args[0]);
 
-    // set parameters
-    self->spi_flash_config.bus_kind = MP_SPIFLASH_BUS_SPI;
-    self->spi_flash_config.bus.u_spi.cs = cs_obj;
-    //self->spi_flash_config.bus.u_spi.data = (void*) 0x20000734; //MP_OBJ_TO_PTR(spi_obj);
-    self->spi_flash_config.bus.u_spi.data = (void*)(((uintptr_t) spi_obj) + 4);
-    self->spi_flash_config.bus.u_spi.proto = &mp_soft_spi_proto;
-    //self->spi_flash_config.cache = NULL; // for now
-    self->spi_flash.config = &self->spi_flash_config;
-   
-    // initialize it
-    mp_spiflash_init(&self->spi_flash);
+    // 获取cs引脚
+    mp_int_t cs_pin_id = mp_obj_get_int(args[1]);
+    mp_hal_pin_obj_t cs = mp_hal_pin_lookup(cs_pin_id);
+    if (cs == NULL) {
+        mp_raise_ValueError("invalid CS pin");
+    }
+
+    // 初始化CS引脚为输出高电平
+    mp_hal_pin_output(cs);
+    mp_hal_pin_write(cs, 1);
+
+    // 创建对象
+    machine_spiflash_obj_t *self = mp_obj_malloc(machine_spiflash_obj_t, type);
+    self->base.type = type;
+    self->spi = spi_obj->spi;
+    self->cs = cs;
 
     return MP_OBJ_FROM_PTR(self);
 }
 
-STATIC mp_obj_t mp_machine_spiflash_read(mp_obj_t self_obj, mp_obj_t addr_obj, mp_obj_t buf_obj)
-{
-    mp_machine_spiflash_obj_t * self = MP_OBJ_TO_PTR(self_obj);
-    const unsigned addr = mp_obj_get_int(addr_obj);
+// 读取JEDEC ID
+STATIC mp_obj_t machine_spiflash_readid(mp_obj_t self_in) {
+    machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    uint8_t cmd[4] = {CMD_RDID, 0, 0, 0};
+    uint8_t buf[3];
+    cs_transfer(self->spi, self->cs, 4, cmd, 3, buf, true);
+    return mp_obj_new_bytes(buf, 3);
+}
+MP_DEFINE_CONST_FUN_OBJ_1(machine_spiflash_readid_obj, machine_spiflash_readid);
 
-    mp_buffer_info_t buf;
-    mp_get_buffer_raise(buf_obj, &buf, MP_BUFFER_READ);
-    const unsigned len = buf.len;
+// 擦除扇区(4KB)，addr必须4KB对齐
+STATIC mp_obj_t machine_spiflash_erase(mp_obj_t self_in, mp_obj_t addr_obj) {
+    machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    uint32_t addr = mp_obj_get_int(addr_obj);
 
-    mp_spiflash_read(&self->spi_flash, addr, len, buf.buf);
+    write_enable(self->spi, self->cs);
+    uint8_t cmd[4] = {CMD_SE, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF};
+    cs_transfer(self->spi, self->cs, 4, cmd, 0, NULL, true);
+    wait_ready(self->spi, self->cs);
 
     return mp_const_none;
 }
-MP_DEFINE_CONST_FUN_OBJ_3(mp_machine_spiflash_read_obj, mp_machine_spiflash_read);
+MP_DEFINE_CONST_FUN_OBJ_2(machine_spiflash_erase_obj, machine_spiflash_erase);
 
-STATIC mp_obj_t mp_machine_spiflash_write(mp_obj_t self_obj, mp_obj_t addr_obj, mp_obj_t buf_obj)
-{
-    mp_machine_spiflash_obj_t * self = MP_OBJ_TO_PTR(self_obj);
-    const unsigned addr = mp_obj_get_int(addr_obj);
+// 读取数据: read(addr, buf) 或 read(addr, len)返回bytes
+STATIC mp_obj_t machine_spiflash_read(size_t n_args, const mp_obj_t *args) {
+    machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(args[0]);
+    uint32_t addr = mp_obj_get_int(args[1]);
 
-    mp_buffer_info_t buf;
-    mp_get_buffer_raise(buf_obj, &buf, MP_BUFFER_READ);
-    const unsigned len = buf.len;
-
-    mp_spiflash_write(&self->spi_flash, addr, len, buf.buf);
-
-    return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_3(mp_machine_spiflash_write_obj, mp_machine_spiflash_write);
-
-STATIC mp_obj_t mp_machine_spiflash_erase(mp_obj_t self_obj, mp_obj_t addr_obj)
-{
-    mp_machine_spiflash_obj_t * self = MP_OBJ_TO_PTR(self_obj);
-    const unsigned addr = mp_obj_get_int(addr_obj);
-
-    int ret = mp_spiflash_erase_block(&self->spi_flash, addr);
-    if (ret != 0)
-	mp_raise_msg(&mp_type_RuntimeError, "erase block failed");
-
-    return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_2(mp_machine_spiflash_erase_obj, mp_machine_spiflash_erase);
-
-#if 0
-STATIC mp_obj_t mp_machine_spi_readinto(size_t n_args, const mp_obj_t *args) {
+    vstr_t vstr;
     mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(args[1], &bufinfo, MP_BUFFER_WRITE);
-    memset(bufinfo.buf, n_args == 3 ? mp_obj_get_int(args[2]) : 0, bufinfo.len);
-    mp_machine_spi_transfer(args[0], bufinfo.len, bufinfo.buf, bufinfo.buf);
-    return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mp_machine_spi_readinto_obj, 2, 3, mp_machine_spi_readinto);
 
-STATIC mp_obj_t mp_machine_spi_write(mp_obj_t self, mp_obj_t wr_buf) {
-    mp_buffer_info_t src;
-    mp_get_buffer_raise(wr_buf, &src, MP_BUFFER_READ);
-    mp_machine_spi_transfer(self, src.len, (const uint8_t*)src.buf, NULL);
-    return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_2(mp_machine_spi_write_obj, mp_machine_spi_write);
-
-STATIC mp_obj_t mp_machine_spi_write_readinto(mp_obj_t self, mp_obj_t wr_buf, mp_obj_t rd_buf) {
-    mp_buffer_info_t src;
-    mp_get_buffer_raise(wr_buf, &src, MP_BUFFER_READ);
-    mp_buffer_info_t dest;
-    mp_get_buffer_raise(rd_buf, &dest, MP_BUFFER_WRITE);
-    if (src.len != dest.len) {
-        mp_raise_ValueError("buffers must be the same length");
+    if (mp_get_buffer(args[2], &bufinfo, MP_BUFFER_WRITE)) {
+        // read(addr, buf) - 读入buffer
+        mp_int_t len = bufinfo.len;
+        uint8_t cmd[4] = {CMD_READ, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF};
+        cs_transfer(self->spi, self->cs, 4, cmd, len, bufinfo.buf, true);
+        return mp_const_none;
+    } else {
+        // read(addr, len) - 返回bytes
+        mp_int_t len = mp_obj_get_int(args[2]);
+        vstr_init_len(&vstr, len);
+        uint8_t cmd[4] = {CMD_READ, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF};
+        cs_transfer(self->spi, self->cs, 4, cmd, len, (uint8_t*)vstr.buf, true);
+        return mp_obj_new_bytes_from_vstr(&vstr);
     }
-    mp_machine_spi_transfer(self, src.len, src.buf, dest.buf);
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_spiflash_read_obj, 3, 3, machine_spiflash_read);
+
+// 写入数据: write(addr, buf)
+STATIC mp_obj_t machine_spiflash_write(mp_obj_t self_in, mp_obj_t addr_obj, mp_obj_t buf_obj) {
+    machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    uint32_t addr = mp_obj_get_int(addr_obj);
+
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(buf_obj, &bufinfo, MP_BUFFER_READ);
+    uint32_t len = bufinfo.len;
+
+    write_enable(self->spi, self->cs);
+    uint8_t cmd[4] = {CMD_PP, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF};
+    cs_transfer(self->spi, self->cs, 4, cmd, len, bufinfo.buf, true);
+    wait_ready(self->spi, self->cs);
+
     return mp_const_none;
 }
-MP_DEFINE_CONST_FUN_OBJ_3(mp_machine_spi_write_readinto_obj, mp_machine_spi_write_readinto);
-#endif
+MP_DEFINE_CONST_FUN_OBJ_3(machine_spiflash_write_obj, machine_spiflash_write);
 
 STATIC const mp_rom_map_elem_t machine_spiflash_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_machine_spiflash_read_obj) },
-    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_machine_spiflash_write_obj) },
-    { MP_ROM_QSTR(MP_QSTR_erase), MP_ROM_PTR(&mp_machine_spiflash_erase_obj) },
-/*
-    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_machine_spi_readinto_obj) },
-    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_machine_spi_write_obj) },
-    { MP_ROM_QSTR(MP_QSTR_write_readinto), MP_ROM_PTR(&mp_machine_spi_write_readinto_obj) },
-*/
+    { MP_ROM_QSTR(MP_QSTR_readid),  MP_ROM_PTR(&machine_spiflash_readid_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read),    MP_ROM_PTR(&machine_spiflash_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write),   MP_ROM_PTR(&machine_spiflash_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_erase),   MP_ROM_PTR(&machine_spiflash_erase_obj) },
 };
+STATIC MP_DEFINE_CONST_DICT(machine_spiflash_locals_dict, machine_spiflash_locals_dict_table);
 
-MP_DEFINE_CONST_DICT(mp_machine_spiflash_locals_dict, machine_spiflash_locals_dict_table);
+MP_DEFINE_CONST_OBJ_TYPE(
+    machine_spiflash_type,
+    MP_QSTR_SPIFlash,
+    MP_TYPE_FLAG_NONE,
+    make_new, machine_spiflash_make_new,
+    locals_dict, &machine_spiflash_locals_dict
+);
 
-const mp_obj_type_t mp_machine_spiflash_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_SPIFlash,
-    //.print = mp_machine_spiflash_print,
-    .make_new = mp_machine_spiflash_make_new,
-    .locals_dict = (mp_obj_dict_t*)&mp_machine_spiflash_locals_dict,
-};
-
-#endif // MICROPY_PY_MACHINE_SPI
+#endif // MICROPY_PY_MACHINE_SPIFLASH

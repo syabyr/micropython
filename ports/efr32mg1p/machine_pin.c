@@ -168,6 +168,14 @@ STATIC mp_obj_t machine_pin_on(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
 
+// pin.toggle()
+STATIC mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
+    mp_hal_pin_obj_t self = MP_OBJ_TO_PTR(self_in);
+    mp_hal_pin_write(self, !mp_hal_pin_read(self));
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
+
 
 STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // instance methods
@@ -175,6 +183,7 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&machine_pin_value_obj) },
     { MP_ROM_QSTR(MP_QSTR_off), MP_ROM_PTR(&machine_pin_off_obj) },
     { MP_ROM_QSTR(MP_QSTR_on), MP_ROM_PTR(&machine_pin_on_obj) },
+    { MP_ROM_QSTR(MP_QSTR_toggle), MP_ROM_PTR(&machine_pin_toggle_obj) },
     //{ MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
 
     // class constants
