@@ -536,7 +536,8 @@ static mp_obj_t mp_radio_promiscuous(size_t n_args, const mp_obj_t *args)
 
 	if (n_args == 1)
 	{
-		radio_promiscuous = mp_obj_int_get_checked(args[0]);
+		// Accept bool/int safely (e.g. True/False or 1/0) without int-object assumptions.
+		radio_promiscuous = mp_obj_is_true(args[0]);
 		RAIL_IEEE802154_SetPromiscuousMode(rail, radio_promiscuous);
 		//printf("radio: %s promiscuous mode\n", radio_promiscuous ? "enabling" : "disabling");
 	}

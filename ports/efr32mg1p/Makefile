@@ -4,7 +4,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
 $(error Invalid BOARD specified)
 endif
 
-#FROZEN_MANIFEST ?= boards/manifest.py
+FROZEN_MANIFEST ?= boards/manifest.py
 
 include boards/$(BOARD)/mpconfigboard.mk
 
@@ -182,15 +182,7 @@ endif
 # are linked into the firmware.
 MPY_TOOL_BIN = $(TOP)/tools/mpy-tool.py
 MPY_TOOL = $(PYTHON) $(MPY_TOOL_BIN) -mlongint-impl=mpz
-#FROZEN_MPY_DIR = modules
-
-
-
-#ifneq ($(FROZEN_MANIFEST),)
-#CFLAGS += -DMICROPY_QSTR_EXTRA_POOL=mp_qstr_frozen_const_pool
-##CFLAGS += -DMICROPY_MODULE_FROZEN_MPY
-#CFLAGS += -DMICROPY_MODULE_FROZEN_STR
-#endif
+# Frozen modules are configured via FROZEN_MANIFEST and handled by py/mkrules.mk.
 
 
 $(BUILD)/firmware.elf: $(OBJ)
