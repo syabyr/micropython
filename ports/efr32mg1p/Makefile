@@ -213,6 +213,10 @@ run:
 openocd:
 	openocd -f interface/cmsis-dap.cfg -f board/efm32.cfg
 
+
+flash:
+	JLinkExe -NoGui 1 -ExitOnError 1 -AutoConnect 1 -If SWD -Speed 5000 -Device EFR32MG1PXXXF256 -CommandFile flash.jlink
+
 gdb: $(BUILD)/firmware.elf
 	gdb-multiarch \
 		-iex 'target remote localhost:3333' \
