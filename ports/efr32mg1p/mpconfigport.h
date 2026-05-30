@@ -126,7 +126,9 @@
 
 // C version of AES
 //#define MICROPY_PY_UCRYPTOLIB           (1)
-#define MICROPY_PY_UBINASCII        (1)
+// Enable binascii.hexlify/unhexlify on this constrained port.
+#define MICROPY_PY_BINASCII         (1)
+#define MICROPY_PY_BUILTINS_BYTES_HEX (1)
 
 
 
