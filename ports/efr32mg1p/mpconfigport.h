@@ -93,13 +93,13 @@
 //#define MICROPY_PY_MACHINE_SPI      (1)
 //#define MICROPY_PY_MACHINE_SPIFLASH (1)
 #define MICROPY_READER_VFS              (MICROPY_VFS)
-#define MICROPY_VFS                     (0)
+#define MICROPY_VFS                     (1)
 #define MICROPY_VFS_FAT                 (0)
 #define MICROPY_VFS_LFS1                (0)
-#define MICROPY_VFS_LFS2                (0)
+#define MICROPY_VFS_LFS2                (1)
 #define MICROPY_READER_POSIX            (0)
 #define MICROPY_PY_BUILTINS_FILE        (0)
-#define MICROPY_PY_BUILTINS_OPEN        (0)
+#define MICROPY_PY_BUILTINS_OPEN        (1)
 
 #if MICROPY_VFS_FAT
 #define MICROPY_FATFS_ENABLE_LFN       (1)
@@ -120,9 +120,7 @@
 
 
 // use vfs's functions for import stat and builtin open
-//#define mp_import_stat mp_vfs_import_stat
-//#define mp_builtin_open mp_vfs_open
-//#define mp_builtin_open_obj mp_vfs_open_obj
+#define mp_builtin_open_obj mp_vfs_open_obj
 
 
 // C version of AES
@@ -182,7 +180,11 @@ extern const struct _mp_obj_module_t machine_module;
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>
 
+struct _mp_vfs_mount_t;
+
 #define MP_STATE_PORT MP_STATE_VM
 
 #define MICROPY_PORT_ROOT_POINTERS \
-    const char *readline_hist[8];
+    const char *readline_hist[8]; \
+    struct _mp_vfs_mount_t *vfs_cur; \
+    struct _mp_vfs_mount_t *vfs_mount_table;

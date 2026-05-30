@@ -98,10 +98,10 @@ void mp_hal_spi_init(mp_hal_spi_obj_t spi_obj, uint32_t baudrate, uint8_t polari
                                 USART_ROUTELOC0_TXLOC_LOC0 |
                                 USART_ROUTELOC0_RXLOC_LOC0;
     } else if (spi->usart == USART1) {
-        // USART1位置0: CLK=PC15, TX=PC14, RX=PC13
-        spi->usart->ROUTELOC0 = USART_ROUTELOC0_CLKLOC_LOC0 |
-                                USART_ROUTELOC0_TXLOC_LOC0 |
-                                USART_ROUTELOC0_RXLOC_LOC0;
+        // Keep SPI on a dedicated route to avoid clobbering USART1 UART route.
+        spi->usart->ROUTELOC0 = USART_ROUTELOC0_CLKLOC_LOC11 |
+                                USART_ROUTELOC0_TXLOC_LOC11 |
+                                USART_ROUTELOC0_RXLOC_LOC11;
     }
     // 启用USART引脚
     spi->usart->ROUTEPEN = USART_ROUTEPEN_CLKPEN | USART_ROUTEPEN_TXPEN | USART_ROUTEPEN_RXPEN;

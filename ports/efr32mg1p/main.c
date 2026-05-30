@@ -37,13 +37,22 @@
 #include "py/mperrno.h"
 #include "py/builtin.h"
 #include "shared/runtime/pyexec.h"
+#include "extmod/vfs.h"
+#include "extmod/vfs_lfs.h"
 #include "em_chip.h"
 #include "em_cmu.h"
 #include "em_emu.h"
 #include "em_usart.h"
 #include "zrepl.h"
 #include "radio.h"
+#include "machine_spi.h"
+#include "machine_spiflash.h"
 #include "genhdr/mpversion.h"
+
+#if MICROPY_VFS
+MP_REGISTER_ROOT_POINTER(struct _mp_vfs_mount_t *vfs_cur);
+MP_REGISTER_ROOT_POINTER(struct _mp_vfs_mount_t *vfs_mount_table);
+#endif
 
 extern uint8_t __StackTop;
 extern uint8_t __HeapBase;
@@ -53,6 +62,63 @@ int *__errno (void)
 	static int _errno;
 	return &_errno;
 }
+
+#if MICROPY_VFS && MICROPY_VFS_LFS2
+#define EFR32_SPIFLASH_SPI_ID (0)
+#define EFR32_SPIFLASH_CS_PIN (12)
+#define EFR32_SPIFLASH_SCK_PIN (13)
+#define EFR32_SPIFLASH_MISO_PIN (14)
+#define EFR32_SPIFLASH_MOSI_PIN (15)
+
+MP_NOINLINE static bool init_flash_fs(void) {
+	nlr_buf_t nlr;
+	if (nlr_push(&nlr) != 0) {
+		printf("MPY: flash fs init exception\n");
+		return false;
+	}
+
+	machine_spiflash_obj_t *bdev = mp_obj_malloc(machine_spiflash_obj_t, &machine_spiflash_type);
+	bdev->spi = mp_hal_spi_get(EFR32_SPIFLASH_SPI_ID);
+	bdev->cs = mp_hal_pin_lookup(EFR32_SPIFLASH_CS_PIN);
+	if (bdev->cs == NULL) {
+		printf("MPY: invalid SPI flash CS pin\n");
+		nlr_pop();
+		return false;
+	}
+
+	mp_hal_pin_output(bdev->cs);
+	mp_hal_pin_write(bdev->cs, 1);
+	mp_hal_spi_init(bdev->spi, 8000000, 0, 0, 8, 0,
+		EFR32_SPIFLASH_SCK_PIN, EFR32_SPIFLASH_MOSI_PIN, EFR32_SPIFLASH_MISO_PIN);
+
+	mp_obj_t bdev_obj = MP_OBJ_FROM_PTR(bdev);
+	mp_obj_t mount_point = MP_OBJ_NEW_QSTR(MP_QSTR__slash_);
+	int ret = mp_vfs_mount_and_chdir_protected(bdev_obj, mount_point);
+	if (ret == -MP_ENODEV) {
+		// First boot or empty flash: create LFS2 then mount again.
+		nlr_buf_t nlr;
+		if (nlr_push(&nlr) == 0) {
+			mp_obj_t mkfs_args[3];
+			mp_load_method(MP_OBJ_FROM_PTR(&mp_type_vfs_lfs2), MP_QSTR_mkfs, mkfs_args);
+			mkfs_args[2] = bdev_obj;
+			mp_call_method_n_kw(1, 0, mkfs_args);
+			nlr_pop();
+		} else {
+			printf("MPY: mkfs failed\n");
+			return false;
+		}
+		ret = mp_vfs_mount_and_chdir_protected(bdev_obj, mount_point);
+	}
+
+	if (ret != 0) {
+		printf("MPY: can't mount SPI flash (%d)\n", ret);
+		nlr_pop();
+		return false;
+	}
+	nlr_pop();
+	return true;
+}
+#endif
 
 int main(int argc, char **argv)
 {
@@ -86,7 +152,7 @@ int main(int argc, char **argv)
 	/* TODO: figure out if we can turn off clocks to save power */
 
 	extern void mp_hal_stdout_init(void);
-	extern char mp_hal_stdin_rx_chr(void);
+	extern int mp_hal_stdin_rx_chr(void);
 	mp_hal_stdout_init();
 
 	// send a quick broadcast packet to announce the device
@@ -113,6 +179,10 @@ soft_reset:
     mp_stack_set_limit(stack_size);
     gc_init(heap_base, heap_base + heap_size);
     mp_init();
+
+	#if MICROPY_VFS && MICROPY_VFS_LFS2
+	init_flash_fs();
+	#endif
 
     // run boot-up scripts
     //pyexec_frozen_module("__init__.py"); // 暂时注释掉，因为我们没有frozen模块了
@@ -211,19 +281,6 @@ void MP_WEAK __assert_func(const char *file, int line, const char *func, const c
     __fatal_error("Assertion failed");
 }
 #endif
-
-// 空实现文件系统相关函数，因为我们没有文件系统
-mp_import_stat_t mp_import_stat(const char *path) {
-    return MP_IMPORT_STAT_NO_EXIST;
-}
-
-mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
-    return NULL;
-}
-
-// 空的open对象，因为我们没有文件系统
-#include "py/obj.h"
-const mp_obj_fun_builtin_var_t mp_builtin_open_obj = {};
 
 void NMI_Handler         (void) { uart_str(__func__); while(1); }
 void MemManage_Handler   (void) { uart_str(__func__); while(1); }
