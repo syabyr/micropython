@@ -30,6 +30,8 @@
 #include "em_usart.h"
 #include "em_cmu.h"
 #include "em_gpio.h"
+#include "efr32mg1p_af_ports.h"
+#include "efr32mg1p_af_pins.h"
 #include "machine_spi.h"
 #include "mphalport.h"
 #define SPI_MAX_INSTANCES 2 // 支持2路硬件SPI
@@ -50,6 +52,78 @@ static mp_hal_spi_t spi_instances[SPI_MAX_INSTANCES] = {
     {USART0, 1000000, 0, 0, 8, 0, 0, 0, 0, false}, // SPI0默认用USART0
     {USART1, 1000000, 0, 0, 8, 0, 0, 0, 0, false}, // SPI1默认用USART1
 };
+
+static int mp_hal_spi_find_loc_clk(USART_TypeDef *usart, const mp_hal_pin_obj_t sck_pin) {
+    for (int loc = 0; loc < 32; ++loc) {
+        int clk_port;
+        int clk_num;
+        if (usart == USART0) {
+            clk_port = AF_USART0_CLK_PORT(loc);
+            clk_num = AF_USART0_CLK_PIN(loc);
+        } else {
+            clk_port = AF_USART1_CLK_PORT(loc);
+            clk_num = AF_USART1_CLK_PIN(loc);
+        }
+
+        if (clk_port < 0 || clk_num < 0) {
+            continue;
+        }
+
+        if (clk_port == sck_pin->port && clk_num == sck_pin->pin) {
+            return loc;
+        }
+    }
+
+    return -1;
+}
+
+static int mp_hal_spi_find_loc_tx(USART_TypeDef *usart, const mp_hal_pin_obj_t mosi_pin) {
+    for (int loc = 0; loc < 32; ++loc) {
+        int tx_port;
+        int tx_num;
+        if (usart == USART0) {
+            tx_port = AF_USART0_TX_PORT(loc);
+            tx_num = AF_USART0_TX_PIN(loc);
+        } else {
+            tx_port = AF_USART1_TX_PORT(loc);
+            tx_num = AF_USART1_TX_PIN(loc);
+        }
+
+        if (tx_port < 0 || tx_num < 0) {
+            continue;
+        }
+
+        if (tx_port == mosi_pin->port && tx_num == mosi_pin->pin) {
+            return loc;
+        }
+    }
+
+    return -1;
+}
+
+static int mp_hal_spi_find_loc_rx(USART_TypeDef *usart, const mp_hal_pin_obj_t miso_pin) {
+    for (int loc = 0; loc < 32; ++loc) {
+        int rx_port;
+        int rx_num;
+        if (usart == USART0) {
+            rx_port = AF_USART0_RX_PORT(loc);
+            rx_num = AF_USART0_RX_PIN(loc);
+        } else {
+            rx_port = AF_USART1_RX_PORT(loc);
+            rx_num = AF_USART1_RX_PIN(loc);
+        }
+
+        if (rx_port < 0 || rx_num < 0) {
+            continue;
+        }
+
+        if (rx_port == miso_pin->port && rx_num == miso_pin->pin) {
+            return loc;
+        }
+    }
+
+    return -1;
+}
 // 初始化SPI
 void mp_hal_spi_init(mp_hal_spi_obj_t spi_obj, uint32_t baudrate, uint8_t polarity, uint8_t phase, uint8_t bits, uint8_t firstbit, uint8_t sck, uint8_t mosi, uint8_t miso) {
     mp_hal_spi_t *spi = (mp_hal_spi_t *)spi_obj;
@@ -90,19 +164,18 @@ void mp_hal_spi_init(mp_hal_spi_obj_t spi_obj, uint32_t baudrate, uint8_t polari
     init.autoCsEnable = false; // 不使用硬件片选
     // 初始化USART
     USART_InitSync(spi->usart, &init);
-    // 配置引脚路由
-    // 根据引脚确定路由位置，这里简化处理，默认用位置0
-    if (spi->usart == USART0) {
-        // USART0位置0: CLK=PA2, TX=PA0, RX=PA1
-        spi->usart->ROUTELOC0 = USART_ROUTELOC0_CLKLOC_LOC0 |
-                                USART_ROUTELOC0_TXLOC_LOC0 |
-                                USART_ROUTELOC0_RXLOC_LOC0;
-    } else if (spi->usart == USART1) {
-        // Keep SPI on a dedicated route to avoid clobbering USART1 UART route.
-        spi->usart->ROUTELOC0 = USART_ROUTELOC0_CLKLOC_LOC11 |
-                                USART_ROUTELOC0_TXLOC_LOC11 |
-                                USART_ROUTELOC0_RXLOC_LOC11;
+    int clk_loc = mp_hal_spi_find_loc_clk(spi->usart, sck_pin);
+    int tx_loc = mp_hal_spi_find_loc_tx(spi->usart, mosi_pin);
+    int rx_loc = mp_hal_spi_find_loc_rx(spi->usart, miso_pin);
+    if (clk_loc < 0 || tx_loc < 0 || rx_loc < 0) {
+        mp_raise_ValueError("no AF route for SPI pins");
     }
+
+    spi->usart->ROUTELOC0 = (spi->usart->ROUTELOC0
+        & ~(_USART_ROUTELOC0_CLKLOC_MASK | _USART_ROUTELOC0_TXLOC_MASK | _USART_ROUTELOC0_RXLOC_MASK))
+        | (clk_loc << _USART_ROUTELOC0_CLKLOC_SHIFT)
+        | (tx_loc << _USART_ROUTELOC0_TXLOC_SHIFT)
+        | (rx_loc << _USART_ROUTELOC0_RXLOC_SHIFT);
     // 启用USART引脚
     spi->usart->ROUTEPEN = USART_ROUTEPEN_CLKPEN | USART_ROUTEPEN_TXPEN | USART_ROUTEPEN_RXPEN;
     spi->initialized = true;

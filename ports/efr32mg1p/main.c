@@ -65,8 +65,10 @@ int *__errno (void)
 }
 
 #if MICROPY_VFS && MICROPY_VFS_LFS2
-#define EFR32_SPIFLASH_SPI_ID (0)
-#define EFR32_SPIFLASH_CS_PIN (12)
+#define EFR32_SPIFLASH_SPI_ID (1)
+#define EFR32_SPIFLASH_BAUDRATE (4000000)
+// Pin ID 12 maps to PB11 on this board (see pin_defs.h), used as flash CS.
+#define EFR32_SPIFLASH_CS_PIN_ID (12)
 #define EFR32_SPIFLASH_SCK_PIN (13)
 #define EFR32_SPIFLASH_MISO_PIN (14)
 #define EFR32_SPIFLASH_MOSI_PIN (15)
@@ -79,29 +81,26 @@ MP_NOINLINE static bool init_flash_fs(void) {
 	}
 
 	machine_spiflash_obj_t *bdev = mp_obj_malloc(machine_spiflash_obj_t, &machine_spiflash_type);
-	static mp_soft_spi_obj_t soft_spi;
-	bdev->spi = &soft_spi;
-	bdev->spi_proto = &mp_soft_spi_proto;
-	bdev->cs = mp_hal_pin_lookup(EFR32_SPIFLASH_CS_PIN);
+	bdev->spi = mp_hal_spi_get(EFR32_SPIFLASH_SPI_ID);
+	bdev->spi_proto = &machine_spiflash_hw_spi_proto;
+	bdev->cs = mp_hal_pin_lookup(EFR32_SPIFLASH_CS_PIN_ID);
 	if (bdev->cs == NULL) {
 		printf("MPY: invalid SPI flash CS pin\n");
 		nlr_pop();
 		return false;
 	}
 
-	soft_spi.delay_half = 1;
-	soft_spi.polarity = 0;
-	soft_spi.phase = 0;
-	soft_spi.firstbit = MICROPY_PY_MACHINE_SPI_MSB;
-	soft_spi.sck = mp_hal_pin_lookup(EFR32_SPIFLASH_SCK_PIN);
-	soft_spi.mosi = mp_hal_pin_lookup(EFR32_SPIFLASH_MOSI_PIN);
-	soft_spi.miso = mp_hal_pin_lookup(EFR32_SPIFLASH_MISO_PIN);
-	if (soft_spi.sck == NULL || soft_spi.mosi == NULL || soft_spi.miso == NULL) {
-		printf("MPY: invalid SPI flash pin\n");
-		nlr_pop();
-		return false;
-	}
-	mp_soft_spi_ioctl(&soft_spi, MP_SPI_IOCTL_INIT);
+	mp_hal_spi_init(
+		(mp_hal_spi_obj_t)bdev->spi,
+		EFR32_SPIFLASH_BAUDRATE,
+		0,
+		0,
+		8,
+		MICROPY_PY_MACHINE_SPI_MSB,
+		EFR32_SPIFLASH_SCK_PIN,
+		EFR32_SPIFLASH_MOSI_PIN,
+		EFR32_SPIFLASH_MISO_PIN
+	);
 
 	mp_hal_pin_output(bdev->cs);
 	mp_hal_pin_write(bdev->cs, 1);
@@ -109,8 +108,8 @@ MP_NOINLINE static bool init_flash_fs(void) {
 	mp_obj_t bdev_obj = MP_OBJ_FROM_PTR(bdev);
 	mp_obj_t mount_point = MP_OBJ_NEW_QSTR(MP_QSTR__slash_);
 	int ret = mp_vfs_mount_and_chdir_protected(bdev_obj, mount_point);
-	if (ret == -MP_ENODEV) {
-		// First boot or empty flash: create LFS2 then mount again.
+	if (ret != 0) {
+		// No valid filesystem (or mount failed): create LFS2 then mount again.
 		nlr_buf_t nlr;
 		if (nlr_push(&nlr) == 0) {
 			mp_obj_t mkfs_args[3];
@@ -234,20 +233,20 @@ void _start(void)
 static void uart_str(const char * str)
 {
 	while(*str)
-		USART_Tx(USART1, *str++);
+		USART_Tx(USART0, *str++);
 }
 
 static void uart_u32(const unsigned val)
 {
 	static const char hexdigit[] = "0123456789abcdef";
-	USART_Tx(USART1, hexdigit[(val >> 28) & 0xF]);
-	USART_Tx(USART1, hexdigit[(val >> 24) & 0xF]);
-	USART_Tx(USART1, hexdigit[(val >> 20) & 0xF]);
-	USART_Tx(USART1, hexdigit[(val >> 16) & 0xF]);
-	USART_Tx(USART1, hexdigit[(val >> 12) & 0xF]);
-	USART_Tx(USART1, hexdigit[(val >>  8) & 0xF]);
-	USART_Tx(USART1, hexdigit[(val >>  4) & 0xF]);
-	USART_Tx(USART1, hexdigit[(val >>  0) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >> 28) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >> 24) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >> 20) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >> 16) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >> 12) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >>  8) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >>  4) & 0xF]);
+	USART_Tx(USART0, hexdigit[(val >>  0) & 0xF]);
 }
 
 

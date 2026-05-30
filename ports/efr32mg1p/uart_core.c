@@ -19,9 +19,9 @@
 #include "zrepl.h"
 #include "board_pins.h"
 
-// this definition is insufficient; there are places where usart1 is used
-#define USART USART1
-#define USART_CLOCK  cmuClock_USART1
+// Use USART0 for stdio so USART1 can be dedicated to SPI flash.
+#define USART USART0
+#define USART_CLOCK  cmuClock_USART0
 
 #define CONFIG_RX_IRQ
 #define CONFIG_TX_IRQ
@@ -55,12 +55,12 @@ void uart_recv(uint8_t c)
 	uart_rx_head = next_head;
 }
 
-void USART1_RX_IRQHandler()
+void USART0_RX_IRQHandler()
 {
-	if ((USART1->IF & USART_IF_RXDATAV) == 0)
+	if ((USART0->IF & USART_IF_RXDATAV) == 0)
 		return;
 
-	uart_recv((uint8_t)USART1->RXDATA);
+	uart_recv((uint8_t)USART0->RXDATA);
 
 }
 #endif
@@ -113,7 +113,7 @@ void uart_tx_flush(void)
 		;
 }
 
-void USART1_TX_IRQHandler(void)
+void USART0_TX_IRQHandler(void)
 {
 	// nothing to do if the queue is empty
 	const uint8_t tail = uart_tx_tail;
@@ -122,7 +122,7 @@ void USART1_TX_IRQHandler(void)
 	if (tail == uart_tx_head)
 	{
 		// turn off the buffer level interrupt
-		USART_IntDisable(USART1, USART_IF_TXBL);
+		USART_IntDisable(USART0, USART_IF_TXBL);
 		return;
 	}
 
@@ -150,7 +150,7 @@ static void uart_putc(uint8_t c, bool blocking)
 
 		// if the interrupts are not currently enabled,
 		// there are no pending characters and we can start it
-		USART_IntEnable(USART1, USART_IF_TXBL);
+		USART_IntEnable(USART0, USART_IF_TXBL);
 		break;
 	} while(blocking);
 #else
@@ -217,20 +217,20 @@ void mp_hal_stdout_init(void)
                 | USART_CMD_TXEN;
 
 #ifdef CONFIG_RX_IRQ
-  // enable RX interrupts on USART1
-  USART_IntClear(USART1, USART_IF_RXDATAV);
-  USART_IntEnable(USART1, USART_IF_RXDATAV);
+	// enable RX interrupts on USART0
+	USART_IntClear(USART0, USART_IF_RXDATAV);
+	USART_IntEnable(USART0, USART_IF_RXDATAV);
 
-  NVIC_ClearPendingIRQ(USART1_RX_IRQn);
-  NVIC_EnableIRQ(USART1_RX_IRQn);
+	NVIC_ClearPendingIRQ(USART0_RX_IRQn);
+	NVIC_EnableIRQ(USART0_RX_IRQn);
 #endif
 
 #ifdef CONFIG_TX_IRQ
-  // configure TX interrupts on USART1, but do not enable yet
-  USART_IntClear(USART1, USART_IF_TXBL);
-  //USART_IntEnable(USART1, USART_IF_TXBL);
+	// configure TX interrupts on USART0, but do not enable yet
+	USART_IntClear(USART0, USART_IF_TXBL);
+	//USART_IntEnable(USART0, USART_IF_TXBL);
 
-  NVIC_ClearPendingIRQ(USART1_TX_IRQn);
-  NVIC_EnableIRQ(USART1_TX_IRQn);
+	NVIC_ClearPendingIRQ(USART0_TX_IRQn);
+	NVIC_EnableIRQ(USART0_TX_IRQn);
 #endif
 }

@@ -66,7 +66,7 @@ static void machine_spiflash_hw_spi_transfer(void *self_in, size_t len, const ui
     mp_hal_spi_transfer((mp_hal_spi_obj_t)self_in, len, src, dest);
 }
 
-static const mp_spi_proto_t machine_spiflash_hw_spi_proto = {
+const mp_spi_proto_t machine_spiflash_hw_spi_proto = {
     .ioctl = machine_spiflash_hw_spi_ioctl,
     .transfer = machine_spiflash_hw_spi_transfer,
 };

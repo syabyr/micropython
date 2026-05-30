@@ -14,6 +14,8 @@ typedef struct _machine_spiflash_obj_t {
     mp_hal_pin_obj_t cs;
 } machine_spiflash_obj_t;
 
+extern const mp_spi_proto_t machine_spiflash_hw_spi_proto;
+
 extern const mp_obj_type_t machine_spiflash_type;
 
 #endif // MICROPY_INCLUDED_MACHINE_SPIFLASH_H
