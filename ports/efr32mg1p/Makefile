@@ -125,6 +125,7 @@ PYLIB_SRC_C = \
 
 PYMOD_SRC_C = \
 	extmod/modbinascii.c \
+	extmod/modos.c \
 	extmod/machine_mem.c \
 	machine_pin.c \
 	extmod/machine_pwm.c \

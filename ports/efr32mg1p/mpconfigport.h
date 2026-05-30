@@ -61,6 +61,7 @@
 #define MICROPY_PY_ARRAY_SLICE_ASSIGN   (1)
 #define MICROPY_PY_ATTRTUPLE        (0)
 #define MICROPY_PY_COLLECTIONS      (0)
+#define MICROPY_PY_OS               (1)
 #define MICROPY_PY_MATH             (1)
 #define MICROPY_PY_CMATH            (0)
 #define MICROPY_PY_IO               (1)
@@ -166,7 +167,7 @@ typedef struct _mp_hal_pwm_t * mp_hal_pwm_obj_t;
 #define MP_HAL_PWM_TOP 8192
 
 // extra built in names to add to the global namespace
-extern const struct _mp_obj_module_t uos_module;
+extern const struct _mp_obj_module_t mp_module_os;
 extern const struct _mp_obj_module_t utime_module;
 extern const struct _mp_obj_module_t machine_module;
 
@@ -174,7 +175,7 @@ extern const struct _mp_obj_module_t machine_module;
     { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) }, \
 
 #define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&uos_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
     { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&utime_module) }, \
     { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&machine_module) }, \
 
