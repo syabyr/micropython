@@ -39,6 +39,9 @@
 #define GPIO_MODE_OUTPUT 2
 #define GPIO_MODE_INPUT_PULLUP 3
 
+#define GPIO_PULL_UP 1
+#define GPIO_PULL_DOWN 2
+
 // pin.init(mode, pull=None, *, value)
 STATIC mp_obj_t machine_pin_obj_init_helper(mp_hal_pin_obj_t self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_mode, ARG_pull, ARG_value };
@@ -71,28 +74,16 @@ STATIC mp_obj_t machine_pin_obj_init_helper(mp_hal_pin_obj_t self, size_t n_args
     }
 
     // configure pull
-    if (args[ARG_pull].u_obj != MP_OBJ_NEW_SMALL_INT(-1)) {
-#if 0
-        int mode = 0;
-        if (args[ARG_pull].u_obj != mp_const_none) {
-            mode = mp_obj_get_int(args[ARG_pull].u_obj);
-        }
-        if (mode & GPIO_PULL_DOWN) {
-            gpio_pulldown_en(self);
+    if (args[ARG_pull].u_obj != mp_const_none
+        && !(mp_obj_is_small_int(args[ARG_pull].u_obj) && mp_obj_get_int(args[ARG_pull].u_obj) == -1)) {
+        int mode = mp_obj_get_int(args[ARG_pull].u_obj);
+        if (mode == GPIO_PULL_UP) {
+            GPIO_PinModeSet(self->port, self->pin, gpioModeInputPull, 1);
+        } else if (mode == GPIO_PULL_DOWN) {
+            GPIO_PinModeSet(self->port, self->pin, gpioModeInputPull, 0);
         } else {
-            gpio_pulldown_dis(self);
+            mp_raise_ValueError("pin pull unknown");
         }
-        if (mode & GPIO_PULL_UP) {
-            gpio_pullup_en(self);
-        } else {
-            gpio_pullup_dis(self);
-        }
-        if (mode & GPIO_PULL_HOLD) {
-            gpio_hold_en(self);
-        } else if (GPIO_IS_VALID_OUTPUT_GPIO(self)) {
-            gpio_hold_dis(self);
-        }
-#endif
     }
 
     return mp_const_none;
@@ -189,10 +180,10 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // class constants
     { MP_ROM_QSTR(MP_QSTR_IN), MP_ROM_INT(GPIO_MODE_INPUT) },
     { MP_ROM_QSTR(MP_QSTR_OUT), MP_ROM_INT(GPIO_MODE_OUTPUT) },
-/*
-    { MP_ROM_QSTR(MP_QSTR_OPEN_DRAIN), MP_ROM_INT(GPIO_MODE_INPUT_OUTPUT_OD) },
     { MP_ROM_QSTR(MP_QSTR_PULL_UP), MP_ROM_INT(GPIO_PULL_UP) },
     { MP_ROM_QSTR(MP_QSTR_PULL_DOWN), MP_ROM_INT(GPIO_PULL_DOWN) },
+/*
+    { MP_ROM_QSTR(MP_QSTR_OPEN_DRAIN), MP_ROM_INT(GPIO_MODE_INPUT_OUTPUT_OD) },
     { MP_ROM_QSTR(MP_QSTR_PULL_HOLD), MP_ROM_INT(GPIO_PULL_HOLD) },
     { MP_ROM_QSTR(MP_QSTR_IRQ_RISING), MP_ROM_INT(GPIO_PIN_INTR_POSEDGE) },
     { MP_ROM_QSTR(MP_QSTR_IRQ_FALLING), MP_ROM_INT(GPIO_PIN_INTR_NEGEDGE) },
