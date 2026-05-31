@@ -1,7 +1,7 @@
-    { {&machine_pin_type}, gpioPortA, 0,  0, PWM(0,0) }, // pcb label PWM4
+    { {&machine_pin_type}, gpioPortA, 0,  0, PWM(0,0) }, // pcb label PWM4,Button
     { {&machine_pin_type}, gpioPortA, 1,  1, PWM(1,0) }, // pcb label PWM3
     { {&machine_pin_type}, gpioPortB, 12, 2, PWM(2,5) }, // pcb label PWM2
-    { {&machine_pin_type}, gpioPortB, 13, 3, PWM(3,5) }, // pcb label PWM1
+    { {&machine_pin_type}, gpioPortB, 13, 3, PWM(3,5) }, // pcb label PWM1,Indicator LED
 
     // right side going up
     { {&machine_pin_type}, gpioPortB, 15, 4, NO_PWM },  //TX
