@@ -108,6 +108,7 @@ SRC_C = \
 	pin.c \
 	pwm.c \
 	spi.c \
+	i2c.c \
 	modmachine.c \
 	modutime.c \
 	modcrypto.c \
@@ -131,6 +132,7 @@ PYMOD_SRC_C = \
 	machine_pin.c \
 	extmod/machine_pwm.c \
 	machine_spi.c \
+	machine_i2c.c \
 	machine_spiflash.c \
 	drivers/bus/softspi.c \
 	extmod/vfs.c \
@@ -158,6 +160,7 @@ LIB_C += \
 	$(EMLIB_DIR)/em_emu.c \
 	$(EMLIB_DIR)/em_crypto.c \
 	$(EMLIB_DIR)/em_timer.c \
+	$(EMLIB_DIR)/em_i2c.c \
 
 OBJ = $(PY_O) \
 	$(addprefix $(BUILD)/, $(SRC_C:.c=.o)) \

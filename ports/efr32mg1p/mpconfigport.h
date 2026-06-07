@@ -76,6 +76,7 @@
 #define MICROPY_PY_MACHINE          (1)
 #define MICROPY_PY_MACHINE_PIN      (1) // 启用Pin模块
 #define MICROPY_PY_MACHINE_SPI      (1) // 启用SPI模块
+#define MICROPY_PY_MACHINE_I2C      (1) // 启用I2C模块
 #define MICROPY_PY_MACHINE_SPIFLASH (1) // 启用SPIFlash模块
 #define MICROPY_PY_UTIME_MP_HAL     (1)
 //#define MICROPY_MODULE_FROZEN_MPY   (1)

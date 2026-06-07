@@ -26,6 +26,7 @@
 #include "py/runtime.h"
 #include "py/mperrno.h"
 #include "py/mphal.h"
+#include "machine_pin.h"
 #include "machine_spi.h"
 #if MICROPY_PY_MACHINE_SPI
 STATIC mp_obj_t machine_spi_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args);
@@ -91,15 +92,27 @@ STATIC mp_obj_t machine_spi_init(size_t n_args, const mp_obj_t *args, mp_map_t *
     phase = vals[ARG_phase].u_int;
     bits = vals[ARG_bits].u_int;
     firstbit = vals[ARG_firstbit].u_int;
-    // 如果有指定引脚，使用指定的
+    // 如果有指定引脚，使用指定的 - accepts int or Pin object
     if (vals[ARG_sck].u_obj != MP_OBJ_NULL) {
-        sck = mp_obj_get_int(vals[ARG_sck].u_obj);
+        if (mp_obj_is_type(vals[ARG_sck].u_obj, &machine_pin_type)) {
+            sck = mp_hal_pin_id(MP_OBJ_TO_PTR(vals[ARG_sck].u_obj));
+        } else {
+            sck = mp_obj_get_int(vals[ARG_sck].u_obj);
+        }
     }
     if (vals[ARG_mosi].u_obj != MP_OBJ_NULL) {
-        mosi = mp_obj_get_int(vals[ARG_mosi].u_obj);
+        if (mp_obj_is_type(vals[ARG_mosi].u_obj, &machine_pin_type)) {
+            mosi = mp_hal_pin_id(MP_OBJ_TO_PTR(vals[ARG_mosi].u_obj));
+        } else {
+            mosi = mp_obj_get_int(vals[ARG_mosi].u_obj);
+        }
     }
     if (vals[ARG_miso].u_obj != MP_OBJ_NULL) {
-        miso = mp_obj_get_int(vals[ARG_miso].u_obj);
+        if (mp_obj_is_type(vals[ARG_miso].u_obj, &machine_pin_type)) {
+            miso = mp_hal_pin_id(MP_OBJ_TO_PTR(vals[ARG_miso].u_obj));
+        } else {
+            miso = mp_obj_get_int(vals[ARG_miso].u_obj);
+        }
     }
     // 初始化SPI
     mp_hal_spi_init(self->spi, baudrate, polarity, phase, bits, firstbit, sck, mosi, miso);
