@@ -36,6 +36,7 @@
 #include "py/stackctrl.h"
 #include "py/mperrno.h"
 #include "py/builtin.h"
+#include "shared/runtime/gchelper.h"
 #include "drivers/bus/spi.h"
 #include "shared/runtime/pyexec.h"
 #include "extmod/vfs.h"
@@ -248,11 +249,8 @@ static void uart_u32(const unsigned val)
 
 
 void gc_collect(void) {
-    // WARNING: This gc_collect implementation doesn't try to get root
-    // pointers from CPU registers, and thus may function incorrectly.
-    void *dummy;
     gc_collect_start();
-    gc_collect_root(&dummy, ((mp_uint_t)&__StackTop - (mp_uint_t)&dummy) / sizeof(mp_uint_t));
+	gc_helper_collect_regs_and_stack();
     gc_collect_end();
     //gc_dump_info();
 }
@@ -260,12 +258,13 @@ void gc_collect(void) {
 static void __attribute__((__noreturn__))
 reboot_delay(void)
 {
-	for(int i = 0 ; i < (1 <<28) ; i++)
+	for (int i = 0; i < (1 << 20); i++)
 		__asm__ __volatile__("nop");
 
 	NVIC_SystemReset();
-	while(1)
-		;
+	while (1) {
+		__asm__ __volatile__("wfi");
+	}
 }
 
 void

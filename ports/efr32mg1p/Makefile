@@ -84,11 +84,11 @@ LIBS += $(LIBM) $(LIBGCC)
 
 LINKER_SCRIPT = ../../$(EFM_DIR)/Source/GCC/$(EFM_FAMILY).ld
 
-CFLAGS = $(INC) -g -Wall -Werror -std=c99 -nostdlib $(CFLAGS_$(MCU_SERIES)) $(COPT)
+CFLAGS = $(INC) -g -Wall -Werror -std=gnu99 -nostdlib $(CFLAGS_$(MCU_SERIES)) $(COPT)
 LDFLAGS = -nostdlib -T $(LINKER_SCRIPT) -Map=$@.map --cref --gc-sections
 else
 LD = gcc
-CFLAGS = -m32 $(INC) -Wall -Werror -std=c99 $(COPT)
+CFLAGS = -m32 $(INC) -Wall -Werror -std=gnu99 $(COPT)
 LDFLAGS = -m32 -Wl,-Map=$@.map,--cref -Wl,--gc-sections
 endif
 
@@ -118,6 +118,7 @@ SRC_C = \
 PYLIB_SRC_C = \
 	shared/libc/printf.c \
 	shared/runtime/pyexec.c \
+	shared/runtime/gchelper_generic.c \
 	shared/libc/string0.c \
 	shared/readline/readline.c \
 	shared/runtime/sys_stdio_mphal.c \
