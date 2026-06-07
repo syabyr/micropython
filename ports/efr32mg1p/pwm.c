@@ -7,13 +7,17 @@
 #include "mphalport.h"
 #include "machine_pin.h"
 #include "em_timer.h"
+#include "em_cmu.h"
+
+static bool pwm_init_done;
+static unsigned pwm_active_channels;
 
 void mp_hal_pwm_init(void)
 {
-	static bool init_done;
-	if (init_done)
+	if (pwm_init_done)
 		return;
-	init_done = 1;
+	pwm_init_done = 1;
+	CMU_ClockEnable(cmuClock_TIMER1, true);
 
 	// Set Top Value to 
 	TIMER_TopSet(TIMER1, MP_HAL_PWM_TOP);
@@ -58,6 +62,7 @@ void mp_hal_pwm_duty(mp_hal_pwm_obj_t pwm, int duty)
 	if (!pwm->active)
 	{
 		pwm->active = 1;
+		pwm_active_channels++;
 
 		// Create the timer count control object initializer
 		TIMER_InitCC_TypeDef timerCCInit = TIMER_INITCC_DEFAULT;
@@ -83,6 +88,8 @@ void mp_hal_pwm_deinit(mp_hal_pwm_obj_t pwm)
 	if (!pwm->active)
 		return;
 	pwm->active = 0;
+	if (pwm_active_channels > 0)
+		pwm_active_channels--;
 
 	const uint8_t pwm_config = pwm->pin->pwm_config;
 	if (pwm_config == 0xFF)
@@ -98,5 +105,10 @@ void mp_hal_pwm_deinit(mp_hal_pwm_obj_t pwm)
 	/* Disable route CC1 to location and enable pin;
 	 * values from efm32/gecko_sdk/include/efr32mg1p_timer.h
 	 */
-	TIMER1->ROUTEPEN |= (0x0UL << channel);
+	TIMER1->ROUTEPEN &= ~(0x1UL << channel);
+
+	if (pwm_active_channels == 0) {
+		CMU_ClockEnable(cmuClock_TIMER1, false);
+		pwm_init_done = 0;
+	}
 }

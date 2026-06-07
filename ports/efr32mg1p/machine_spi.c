@@ -52,7 +52,11 @@ STATIC mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, s
     if (n_args > 1 || n_kw > 0) {
         mp_map_t kw_args;
         mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
-        mp_obj_t init_args[] = {MP_OBJ_FROM_PTR(self), args[1], args[2], args[3], args[4], args[5]};
+        mp_obj_t init_args[n_args];
+        init_args[0] = MP_OBJ_FROM_PTR(self);
+        for (size_t i = 1; i < n_args; ++i) {
+            init_args[i] = args[i];
+        }
         machine_spi_init(n_args, init_args, &kw_args);
     }
     return MP_OBJ_FROM_PTR(self);

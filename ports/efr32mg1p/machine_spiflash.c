@@ -84,10 +84,7 @@ static void cs_transfer(machine_spiflash_obj_t *self,
     // 发送/接收数据
     if (data_len > 0) {
         if (read) {
-            for (size_t i = 0; i < data_len; ++i) {
-                uint8_t tx = 0xff;
-                self->spi_proto->transfer(self->spi, 1, &tx, &data[i]);
-            }
+            self->spi_proto->transfer(self->spi, data_len, NULL, data);
         } else {
             self->spi_proto->transfer(self->spi, data_len, data, NULL);
         }

@@ -16,6 +16,14 @@
 #define AES128_BLOCK_LEN	16
 #define AES256_BLOCK_LEN	32
 
+static inline void crypto_clock_enable(void) {
+	CMU_ClockEnable(cmuClock_CRYPTO, true);
+}
+
+static inline void crypto_clock_disable(void) {
+	CMU_ClockEnable(cmuClock_CRYPTO, false);
+}
+
 /*
  * Convert an AES128/256 encryption key to a decryption key
  */
@@ -27,19 +35,23 @@ static mp_obj_t mp_aes_decryptkey(mp_obj_t key_in_obj)
 	if (key_in.len == AES128_BLOCK_LEN)
 	{
 		uint8_t key_out[AES128_BLOCK_LEN];
+		crypto_clock_enable();
 		CRYPTO_AES_DecryptKey128(CRYPTO,
 			key_out,
 			key_in.buf
 		);
+		crypto_clock_disable();
 		return mp_obj_new_bytes(key_out, sizeof(key_out));
 	} else
 	if (key_in.len == AES256_BLOCK_LEN)
 	{
 		uint8_t key_out[AES256_BLOCK_LEN];
+		crypto_clock_enable();
 		CRYPTO_AES_DecryptKey256(CRYPTO,
 			key_out,
 			key_in.buf
 		);
+		crypto_clock_disable();
 		return mp_obj_new_bytes(key_out, sizeof(key_out));
 	} else
 		mp_raise_ValueError("key must be 16 or 32 bytes");
@@ -67,6 +79,7 @@ static mp_obj_t _mp_aes_ecb(mp_obj_t key_obj, mp_obj_t in_obj, mp_obj_t out_obj,
 		if ((in.len & (AES128_BLOCK_LEN-1)) != 0)
 			mp_raise_ValueError("in buffer must be multiple of 16 bytes");
 
+		crypto_clock_enable();
 		CRYPTO_AES_ECB128(
 			CRYPTO,
 			out.buf, // out
@@ -75,12 +88,15 @@ static mp_obj_t _mp_aes_ecb(mp_obj_t key_obj, mp_obj_t in_obj, mp_obj_t out_obj,
 			key.buf,
 			encrypt
 		);
+		CRYPTO_InstructionSequenceWait(CRYPTO);
+		crypto_clock_disable();
 	} else
 	if (key.len == AES256_BLOCK_LEN)
 	{
 		if ((in.len & (AES256_BLOCK_LEN-1)) != 0)
 			mp_raise_ValueError("in buffer must be multiple of 32 bytes");
 
+		crypto_clock_enable();
 		CRYPTO_AES_ECB256(
 			CRYPTO,
 			out.buf, // out
@@ -89,10 +105,10 @@ static mp_obj_t _mp_aes_ecb(mp_obj_t key_obj, mp_obj_t in_obj, mp_obj_t out_obj,
 			key.buf,
 			encrypt
 		);
+		CRYPTO_InstructionSequenceWait(CRYPTO);
+		crypto_clock_disable();
 	} else
 		mp_raise_ValueError("key must be 16 or 32 bytes");
-
-	CRYPTO_InstructionSequenceWait(CRYPTO);
 
 	return mp_const_none;
 }

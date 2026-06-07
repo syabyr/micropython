@@ -469,10 +469,14 @@ int radio_tx_buffer_send(const void * buf, size_t len)
 	// if this is not a multipurpose frame (0x5) and the FCF has
 	// ack requested, then tell the radio to stay online to wait for
 	// the ACK to arrive.
-	const uint8_t fcf = radio_tx_buffer[1];
-	if ((fcf & 0x07) != 0x05
-	&&  (fcf & 0x20) != 0x00)
-		txOpt |= RAIL_TX_OPTION_WAIT_FOR_ACK;
+	if (len >= 2) {
+		const uint8_t *tx_payload = (const uint8_t *)buf;
+		const uint8_t fcf = tx_payload[1];
+		if ((fcf & 0x07) != 0x05
+		&&  (fcf & 0x20) != 0x00) {
+			txOpt |= RAIL_TX_OPTION_WAIT_FOR_ACK;
+		}
+	}
 
 	// start the transmit, we hope!
 	int rc = RAIL_StartCcaCsmaTx(

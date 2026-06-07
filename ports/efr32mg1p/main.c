@@ -156,12 +156,8 @@ int main(int argc, char **argv)
 	/* Turn RTCC clock gate back on to keep RTC time correct */
 	CMU_ClockEnable(cmuClock_RTCC, true);
 
-	/* Enable AES clock: otherwise result from AES ops is 0 */
-	CMU_ClockEnable(cmuClock_CRYPTO, true);
-
-	/* Enable clock for GPIO module and TIMER1 for PWM */
+	/* Enable clock for GPIO module */
 	CMU_ClockEnable(cmuClock_GPIO, true);
-	CMU_ClockEnable(cmuClock_TIMER1, true );
 
 	/* TODO: figure out if we can turn off clocks to save power */
 

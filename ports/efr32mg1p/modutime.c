@@ -31,7 +31,9 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include "py/mphal.h"
 #include "py/runtime.h"
+#include "py/smallint.h"
 #include "utime_mphal.h"
 
 #include "rail.h"
@@ -57,25 +59,105 @@ uint64_t mp_hal_time_ns(void)
 	return mp_hal_ticks_us() * 1000;
 }
 
-void mp_hal_delay_us(int us)
+void mp_hal_delay_us(mp_uint_t us)
 {
 	unsigned now = mp_hal_ticks_us();
 	unsigned end = now + us;
+	unsigned last_poll = now;
 	if (end < now)
 	{
 		// timer must wrap, wait for the wrap to happen
-		while (mp_hal_ticks_us() > now)
-			;
+		while (mp_hal_ticks_us() > now) {
+			unsigned t = mp_hal_ticks_us();
+			if ((unsigned)(t - last_poll) >= 1000) {
+				mp_handle_pending(MP_HANDLE_PENDING_CALLBACKS_AND_EXCEPTIONS);
+				last_poll = t;
+			}
+		}
 	}
 
-	while (mp_hal_ticks_us() < end)
-		;
+	while (mp_hal_ticks_us() < end) {
+		unsigned t = mp_hal_ticks_us();
+		if ((unsigned)(t - last_poll) >= 1000) {
+			mp_handle_pending(MP_HANDLE_PENDING_CALLBACKS_AND_EXCEPTIONS);
+			last_poll = t;
+		}
+	}
 }
 
-void mp_hal_delay_ms(int ms)
+void mp_hal_delay_ms(mp_uint_t ms)
 {
-	mp_hal_delay_us(ms * 1000);
+	while (ms > 0) {
+		mp_uint_t chunk_ms = ms > 1000 ? 1000 : ms;
+		mp_hal_delay_us(chunk_ms * 1000);
+		ms -= chunk_ms;
+	}
 }
+
+static mp_obj_t utime_sleep(mp_obj_t seconds_o) {
+#if MICROPY_PY_BUILTINS_FLOAT
+	mp_hal_delay_ms((mp_uint_t)(1000 * mp_obj_get_float(seconds_o)));
+#else
+	mp_hal_delay_ms(1000 * mp_obj_get_int(seconds_o));
+#endif
+	return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(mp_utime_sleep_obj, utime_sleep);
+
+static mp_obj_t utime_sleep_ms(mp_obj_t arg) {
+	mp_int_t ms = mp_obj_get_int(arg);
+	if (ms >= 0) {
+		mp_hal_delay_ms(ms);
+	}
+	return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(mp_utime_sleep_ms_obj, utime_sleep_ms);
+
+static mp_obj_t utime_sleep_us(mp_obj_t arg) {
+	mp_int_t us = mp_obj_get_int(arg);
+	if (us > 0) {
+		mp_hal_delay_us(us);
+	}
+	return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(mp_utime_sleep_us_obj, utime_sleep_us);
+
+static mp_obj_t utime_ticks_ms(void) {
+	return MP_OBJ_NEW_SMALL_INT(mp_hal_ticks_ms() & (MICROPY_PY_TIME_TICKS_PERIOD - 1));
+}
+MP_DEFINE_CONST_FUN_OBJ_0(mp_utime_ticks_ms_obj, utime_ticks_ms);
+
+static mp_obj_t utime_ticks_us(void) {
+	return MP_OBJ_NEW_SMALL_INT(mp_hal_ticks_us() & (MICROPY_PY_TIME_TICKS_PERIOD - 1));
+}
+MP_DEFINE_CONST_FUN_OBJ_0(mp_utime_ticks_us_obj, utime_ticks_us);
+
+static mp_obj_t utime_ticks_cpu(void) {
+	return MP_OBJ_NEW_SMALL_INT(mp_hal_ticks_cpu() & (MICROPY_PY_TIME_TICKS_PERIOD - 1));
+}
+MP_DEFINE_CONST_FUN_OBJ_0(mp_utime_ticks_cpu_obj, utime_ticks_cpu);
+
+static mp_obj_t utime_ticks_diff(mp_obj_t end_in, mp_obj_t start_in) {
+	mp_uint_t start = MP_OBJ_SMALL_INT_VALUE(start_in);
+	mp_uint_t end = MP_OBJ_SMALL_INT_VALUE(end_in);
+	mp_int_t diff = ((end - start + MICROPY_PY_TIME_TICKS_PERIOD / 2) & (MICROPY_PY_TIME_TICKS_PERIOD - 1))
+		- MICROPY_PY_TIME_TICKS_PERIOD / 2;
+	return MP_OBJ_NEW_SMALL_INT(diff);
+}
+MP_DEFINE_CONST_FUN_OBJ_2(mp_utime_ticks_diff_obj, utime_ticks_diff);
+
+static mp_obj_t utime_ticks_add(mp_obj_t ticks_in, mp_obj_t delta_in) {
+	mp_uint_t ticks = MP_OBJ_SMALL_INT_VALUE(ticks_in);
+	mp_uint_t delta = mp_obj_get_int(delta_in);
+
+	if (delta + MICROPY_PY_TIME_TICKS_PERIOD / 2 - 1 >= MICROPY_PY_TIME_TICKS_PERIOD - 1) {
+		mp_raise_msg(&mp_type_OverflowError, MP_ERROR_TEXT("ticks interval overflow"));
+	}
+
+	return MP_OBJ_NEW_SMALL_INT((ticks + delta) & (MICROPY_PY_TIME_TICKS_PERIOD - 1));
+}
+MP_DEFINE_CONST_FUN_OBJ_2(mp_utime_ticks_add_obj, utime_ticks_add);
+
 STATIC const mp_rom_map_elem_t time_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_utime) },
 
@@ -95,3 +177,5 @@ const mp_obj_module_t utime_module = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t*)&time_module_globals,
 };
+
+MP_REGISTER_MODULE(MP_QSTR_utime, utime_module);
