@@ -216,7 +216,7 @@ openocd:
 
 
 flash:
-	JLinkExe -NoGui 1 -ExitOnError 1 -AutoConnect 1 -If SWD -Speed 5000 -Device EFR32MG1PXXXF256 -CommandFile flash.jlink
+	JLinkExe -NoGui 1 -SelectEmuBySN 190182 -ExitOnError 1 -AutoConnect 1 -If SWD -Speed 5000 -Device EFR32MG1PXXXF256 -CommandFile flash.jlink
 
 gdb: $(BUILD)/firmware.elf
 	gdb-multiarch \

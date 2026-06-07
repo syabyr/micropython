@@ -126,9 +126,7 @@ static const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) }, // Pin模块
     { MP_ROM_QSTR(MP_QSTR_SPI),                 MP_ROM_PTR(&machine_spi_type) }, // SPI模块
     { MP_ROM_QSTR(MP_QSTR_I2C),                 MP_ROM_PTR(&machine_i2c_type) }, // I2C模块
-    /*
     { MP_ROM_QSTR(MP_QSTR_PWM),                 MP_ROM_PTR(&machine_pwm_type) },
-    */
     { MP_ROM_QSTR(MP_QSTR_SPIFlash),            MP_ROM_PTR(&machine_spiflash_type) },
     { MP_ROM_QSTR(MP_QSTR_Flash),               MP_ROM_PTR(&machine_spiflash_type) }, // Flash作为SPIFlash别名
     { MP_ROM_QSTR(MP_QSTR_stdio_poll),          MP_ROM_PTR(&machine_stdio_poll_obj) },

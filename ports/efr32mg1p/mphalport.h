@@ -40,6 +40,7 @@ struct _mp_hal_pwm_t {
 extern void mp_hal_pwm_init(void);
 extern int mp_hal_pwm_freq_get(mp_hal_pwm_obj_t pwm);
 extern void mp_hal_pwm_freq(mp_hal_pwm_obj_t pwm, int freq);
+extern int mp_hal_pwm_top_get(void);
 extern int mp_hal_pwm_duty_get(mp_hal_pwm_obj_t pwm);
 extern void mp_hal_pwm_duty(mp_hal_pwm_obj_t pwm, int duty);
 extern void mp_hal_pwm_deinit(mp_hal_pwm_obj_t pwm);
