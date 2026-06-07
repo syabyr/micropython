@@ -11,6 +11,46 @@
 
 static bool pwm_init_done;
 static unsigned pwm_active_channels;
+static int pwm_freq = 1000;
+static uint32_t pwm_top = MP_HAL_PWM_TOP;
+
+static void mp_hal_pwm_config_freq(int freq)
+{
+    if (freq <= 0) {
+        mp_raise_ValueError("invalid PWM frequency");
+    }
+
+    static const TIMER_Prescale_TypeDef prescalers[] = {
+        timerPrescale1, timerPrescale2, timerPrescale4, timerPrescale8,
+        timerPrescale16, timerPrescale32, timerPrescale64, timerPrescale128,
+        timerPrescale256, timerPrescale512, timerPrescale1024,
+    };
+    static const uint16_t divs[] = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 };
+
+    uint32_t top = 0;
+    TIMER_Prescale_TypeDef prescale = timerPrescale1;
+    for (size_t i = 0; i < MP_ARRAY_SIZE(divs); ++i) {
+        uint32_t timer_freq = CMU_ClockFreqGet(cmuClock_TIMER1) / divs[i];
+        top = timer_freq / freq;
+        if (top > 0 && top <= 0xffff) {
+            prescale = prescalers[i];
+            break;
+        }
+    }
+
+    if (top == 0 || top > 0xffff) {
+        mp_raise_ValueError("unsupported PWM frequency");
+    }
+
+    TIMER_Enable(TIMER1, false);
+    TIMER_Init_TypeDef timerInit = TIMER_INIT_DEFAULT;
+    timerInit.prescale = prescale;
+    TIMER_Init(TIMER1, &timerInit);
+    TIMER_TopSet(TIMER1, top);
+    TIMER_Enable(TIMER1, true);
+    pwm_freq = freq;
+    pwm_top = top;
+}
 
 void mp_hal_pwm_init(void)
 {
@@ -18,26 +58,23 @@ void mp_hal_pwm_init(void)
 		return;
 	pwm_init_done = 1;
 	CMU_ClockEnable(cmuClock_TIMER1, true);
-
-	// Set Top Value to 
-	TIMER_TopSet(TIMER1, MP_HAL_PWM_TOP);
-
-	// Create a timerInit object and set prescaler
-	TIMER_Init_TypeDef timerInit = TIMER_INIT_DEFAULT;
-	timerInit.prescale = timerPrescale4;
- 
-	TIMER_Init(TIMER1, &timerInit);
+    mp_hal_pwm_config_freq(pwm_freq);
 }
 
 
 int mp_hal_pwm_freq_get(mp_hal_pwm_obj_t pwm)
 {
-	return -1;
+    (void)pwm;
+	return pwm_freq;
 }
 
 void mp_hal_pwm_freq(mp_hal_pwm_obj_t pwm, int freq)
 {
-	mp_raise_ValueError("PWM.Freq() not supported");
+    (void)pwm;
+    if (!pwm_init_done) {
+        mp_hal_pwm_init();
+    }
+    mp_hal_pwm_config_freq(freq);
 }
 
 int mp_hal_pwm_duty_get(mp_hal_pwm_obj_t pwm)
@@ -50,11 +87,22 @@ int mp_hal_pwm_duty_get(mp_hal_pwm_obj_t pwm)
 	return TIMER1->CC[channel].CCV;
 }
 
+int mp_hal_pwm_top_get(void)
+{
+    return pwm_top;
+}
+
 void mp_hal_pwm_duty(mp_hal_pwm_obj_t pwm, int duty)
 {
 	const uint8_t pwm_config = pwm->pin->pwm_config;
 	if (pwm_config == 0xFF)
 		mp_raise_ValueError("PWM not supported");
+
+    if (duty < 0) {
+        duty = 0;
+    } else if ((uint32_t)duty > pwm_top) {
+        duty = pwm_top;
+    }
 
 	const unsigned channel = (pwm_config >> 4) & 0xF;
 	const unsigned location = (pwm_config >> 0) & 0xF;

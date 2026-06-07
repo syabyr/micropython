@@ -71,7 +71,8 @@
 #define MICROPY_PY_SYS_STDFILES     (1)
 #define MICROPY_PY_SYS_STDIO_BUFFER (1)
 #define MICROPY_PY_SYS_EXIT         (1)
-//#define MICROPY_PY_MACHINE_PWM      (1)
+#define MICROPY_PY_MACHINE_PWM      (1)
+#define MICROPY_PY_MACHINE_PWM_INCLUDEFILE "ports/efr32mg1p/machine_pwm.c"
 //#define MICROPY_PY_USELECT          (1)
 #define MICROPY_PY_MACHINE          (1)
 #define MICROPY_PY_MACHINE_PIN      (1) // 启用Pin模块
