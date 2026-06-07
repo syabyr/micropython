@@ -629,4 +629,4 @@ const mp_obj_module_t mp_module_radio = {
     .globals = (mp_obj_dict_t*)&mp_module_radio_globals,
 };
 
-MP_REGISTER_MODULE(MP_QSTR_Radio, mp_module_radio);
+MP_REGISTER_MODULE(MP_QSTR_radio, mp_module_radio);

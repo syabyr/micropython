@@ -88,7 +88,7 @@ int mp_hal_stdin_rx_chr(void)
 
 #ifdef CONFIG_RX_IRQ
 	while(!mp_hal_stdio_poll(MP_STREAM_POLL_RD))
-		;
+		mp_handle_pending(MP_HANDLE_PENDING_CALLBACKS_AND_EXCEPTIONS);
 	const uint8_t tail = uart_rx_tail;
 	c = uart_rx_buf[tail];
 	uart_rx_tail = (tail + 1) & UART_RX_MASK;
@@ -110,7 +110,7 @@ static volatile uint8_t uart_tx_tail;
 void uart_tx_flush(void)
 {
 	while (uart_tx_tail != uart_tx_head)
-		;
+		mp_handle_pending(MP_HANDLE_PENDING_CALLBACKS_AND_EXCEPTIONS);
 }
 
 void USART0_TX_IRQHandler(void)

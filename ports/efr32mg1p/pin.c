@@ -29,7 +29,7 @@ static const struct _mp_hal_pin_t pins[] = {
 
 mp_hal_pin_obj_t mp_hal_pin_lookup(unsigned pin_id)
 {
-	if (0 <= pin_id && pin_id < NUM_PINS)
+	if (pin_id < NUM_PINS)
 		return &pins[pin_id];
 	return NULL;
 }
