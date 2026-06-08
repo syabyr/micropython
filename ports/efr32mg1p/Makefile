@@ -48,7 +48,7 @@ INC += -I../../$(GECKO_SDK)/cmsis/Include/
 INC += -D__NO_SYSTEM_INIT
 INC += -D__STARTUP_CLEAR_BSS
 INC += -D__STACK_SIZE=0x1000
-INC += -D__HEAP_SIZE=0x6000
+INC += -D__HEAP_SIZE=0x5E80
 # should the radio lib be optional?
 #INC += -I../../$(RAIL_DIR)
 #INC += -I../../$(RAIL_DIR)/common
@@ -113,8 +113,7 @@ SRC_C = \
 	modutime.c \
 	modcrypto.c \
 	radio.c \
-	zrepl.c \
-	# moduos.c 已禁用，暂时不编译
+	zrepl.c
 
 PYLIB_SRC_C = \
 	shared/libc/printf.c \

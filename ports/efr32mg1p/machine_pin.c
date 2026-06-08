@@ -41,6 +41,11 @@
 
 #define GPIO_PULL_UP 1
 #define GPIO_PULL_DOWN 2
+#define GPIO_IRQ_RISING 1
+#define GPIO_IRQ_FALLING 2
+
+static uint8_t pin_irq_ids[16];
+MP_REGISTER_ROOT_POINTER(mp_obj_t pin_irq_handlers[16]);
 
 // pin.init(mode, pull=None, *, value)
 STATIC mp_obj_t machine_pin_obj_init_helper(mp_hal_pin_obj_t self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -167,6 +172,71 @@ STATIC mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
 
+STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+    enum { ARG_handler, ARG_trigger };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_handler, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_trigger, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = GPIO_IRQ_FALLING | GPIO_IRQ_RISING} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, vals);
+
+    mp_hal_pin_obj_t self = MP_OBJ_TO_PTR(args[0]);
+    unsigned int int_no = self->pin;
+    if (int_no >= MP_ARRAY_SIZE(pin_irq_ids)) {
+        mp_raise_ValueError("invalid IRQ pin");
+    }
+
+    if (vals[ARG_handler].u_obj == mp_const_none) {
+        GPIO_ExtIntConfig(self->port, self->pin, int_no, false, false, false);
+        GPIO_IntDisable(1u << int_no);
+        pin_irq_ids[int_no] = 0;
+        MP_STATE_PORT(pin_irq_handlers[int_no]) = mp_const_none;
+        return mp_const_none;
+    }
+
+    if (pin_irq_ids[int_no] != 0 && pin_irq_ids[int_no] != self->gpio_id + 1) {
+        mp_raise_ValueError("IRQ line already in use");
+    }
+
+    unsigned int trigger = vals[ARG_trigger].u_int;
+    bool rising = trigger & GPIO_IRQ_RISING;
+    bool falling = trigger & GPIO_IRQ_FALLING;
+    if (!rising && !falling) {
+        mp_raise_ValueError("invalid IRQ trigger");
+    }
+
+    pin_irq_ids[int_no] = self->gpio_id + 1;
+    MP_STATE_PORT(pin_irq_handlers[int_no]) = vals[ARG_handler].u_obj;
+    GPIO_IntClear(1u << int_no);
+    GPIO_ExtIntConfig(self->port, self->pin, int_no, rising, falling, true);
+    NVIC_ClearPendingIRQ((int_no & 1) ? GPIO_ODD_IRQn : GPIO_EVEN_IRQn);
+    NVIC_EnableIRQ((int_no & 1) ? GPIO_ODD_IRQn : GPIO_EVEN_IRQn);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_irq_obj, 1, machine_pin_irq);
+
+static void machine_pin_irq_handler(uint32_t flags) {
+    GPIO_IntClear(flags);
+    for (unsigned int int_no = 0; int_no < MP_ARRAY_SIZE(pin_irq_ids); ++int_no) {
+        if ((flags & (1u << int_no)) && pin_irq_ids[int_no] != 0) {
+            mp_obj_t handler = MP_STATE_PORT(pin_irq_handlers[int_no]);
+            if (handler != mp_const_none) {
+                mp_hal_pin_obj_t pin = mp_hal_pin_lookup(pin_irq_ids[int_no] - 1);
+                mp_sched_schedule(handler, MP_OBJ_FROM_PTR(pin));
+            }
+        }
+    }
+}
+
+void GPIO_EVEN_IRQHandler(void) {
+    machine_pin_irq_handler(GPIO_IntGetEnabled() & 0x5555);
+}
+
+void GPIO_ODD_IRQHandler(void) {
+    machine_pin_irq_handler(GPIO_IntGetEnabled() & 0xaaaa);
+}
+
 
 STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // instance methods
@@ -175,13 +245,15 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_off), MP_ROM_PTR(&machine_pin_off_obj) },
     { MP_ROM_QSTR(MP_QSTR_on), MP_ROM_PTR(&machine_pin_on_obj) },
     { MP_ROM_QSTR(MP_QSTR_toggle), MP_ROM_PTR(&machine_pin_toggle_obj) },
-    //{ MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
 
     // class constants
     { MP_ROM_QSTR(MP_QSTR_IN), MP_ROM_INT(GPIO_MODE_INPUT) },
     { MP_ROM_QSTR(MP_QSTR_OUT), MP_ROM_INT(GPIO_MODE_OUTPUT) },
     { MP_ROM_QSTR(MP_QSTR_PULL_UP), MP_ROM_INT(GPIO_PULL_UP) },
     { MP_ROM_QSTR(MP_QSTR_PULL_DOWN), MP_ROM_INT(GPIO_PULL_DOWN) },
+    { MP_ROM_QSTR(MP_QSTR_IRQ_RISING), MP_ROM_INT(GPIO_IRQ_RISING) },
+    { MP_ROM_QSTR(MP_QSTR_IRQ_FALLING), MP_ROM_INT(GPIO_IRQ_FALLING) },
 /*
     { MP_ROM_QSTR(MP_QSTR_OPEN_DRAIN), MP_ROM_INT(GPIO_MODE_INPUT_OUTPUT_OD) },
     { MP_ROM_QSTR(MP_QSTR_PULL_HOLD), MP_ROM_INT(GPIO_PULL_HOLD) },

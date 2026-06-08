@@ -1,0 +1,5 @@
+exec(open("examples/00_smoke.py").read())
+exec(open("examples/02_pwm.py").read())
+exec(open("examples/03_i2c_scan.py").read())
+exec(open("examples/05_spiflash_readid.py").read())
+exec(open("examples/06_crypto_aes.py").read())
