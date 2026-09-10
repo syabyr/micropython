@@ -1,8 +1,8 @@
 from machine import Crypto
-
-key = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
-plain = bytes.fromhex("00112233445566778899aabbccddeeff")
-expected = bytes.fromhex("69c4e0d86a7b0430d8cdb78070b4c55a")
+from binascii import hexlify, unhexlify
+key = unhexlify("000102030405060708090a0b0c0d0e0f")
+plain = unhexlify("00112233445566778899aabbccddeeff")
+expected = unhexlify("69c4e0d86a7b0430d8cdb78070b4c55a")
 
 out = bytearray(16)
 Crypto.aes_ecb_encrypt(key, plain, out)
