@@ -33,3 +33,9 @@ user.props
 # Created by ci.sh esp8266 targets
 /xtensa-lx106-elf-standalone.tar.gz
 /xtensa-lx106-elf/
+
+# EFR32MG21 port: local SDK checkouts referenced via symlink / local paths.
+# The port Makefile resolves them outside the tree (see ports/efr32mg21/README.md).
+/lib/efr32-base
+/lib/gecko_sdk
+/lib/simplicity-sdk
